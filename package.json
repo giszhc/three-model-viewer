@@ -1,0 +1,61 @@
+{
+  "name": "@giszhc/three-model-viewer",
+  "version": "1.0.0",
+  "description": "A modern, professional 3D model inspector and viewer SDK for Web applications. Features OBJ/MTL/ZIP loading, 3D measurements, dynamic dimensional bounding box, plane slicing, and high-res export.",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./style.css": "./dist/style.css"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "three",
+    "threejs",
+    "model-viewer",
+    "obj",
+    "mtl",
+    "zip",
+    "measurement",
+    "clipping",
+    "bounding-box",
+    "cad-viewer",
+    "3d"
+  ],
+  "author": "giszhc",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/giszhc/three-model-viewer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/giszhc/three-model-viewer/issues"
+  },
+  "homepage": "https://github.com/giszhc/three-model-viewer#readme",
+  "type": "module",
+  "dependencies": {
+    "@tweenjs/tween.js": "^25.0.0",
+    "jszip": "^3.10.2",
+    "three": "^0.186.1",
+    "three-mesh-bvh": "^0.9.16"
+  },
+  "devDependencies": {
+    "@types/three": "^0.186.0",
+    "typescript": "^5.8.2",
+    "vite": "^8.3.5",
+    "vite-plugin-dts": "^5.1.2"
+  }
+}

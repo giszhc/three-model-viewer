@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>@giszhc/three-model-viewer - 交互式演示平台</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+    }
+
+    #app-container {
+      display: flex;
+      flex-direction: column;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* Header */
+    header {
+      height: 54px;
+      background: #1e293b;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 20;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 16px;
+      color: #38bdf8;
+    }
+    .brand-badge {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Main Content */
+    .main-body {
+      flex: 1;
+      position: relative;
+      display: flex;
+    }
+
+    #viewport {
+      flex: 1;
+      height: 100%;
+      position: relative;
+    }
+
+    /* Floating Side Panel */
+    .control-panel {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 330px;
+      max-height: calc(100% - 32px);
+      background: rgba(30, 41, 59, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 16px;
+      overflow-y: auto;
+      z-index: 15;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .panel-section {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 14px;
+    }
+    .panel-section:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Buttons & Controls */
+    .btn-group {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+    .btn-group-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .btn-group-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    button {
+      background: #334155;
+      color: #f8fafc;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+    button:hover {
+      background: #475569;
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+    button.active {
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: #ffffff;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+    }
+    button.primary {
+      background: #0ea5e9;
+      color: #ffffff;
+      border-color: transparent;
+    }
+    button.primary:hover {
+      background: #0284c7;
+    }
+    button.danger {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #f87171;
+    }
+    button.danger:hover {
+      background: rgba(239, 68, 68, 0.35);
+    }
+
+    /* Slider Rows */
+    .slider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+    }
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      color: #cbd5e1;
+    }
+    .slider-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    input[type="range"] {
+      flex: 1;
+      accent-color: #0ea5e9;
+      height: 4px;
+      border-radius: 2px;
+      cursor: pointer;
+    }
+
+    /* Clipping Plane Cards */
+    .clip-card {
+      background: rgba(15, 23, 42, 0.65);
+      border-radius: 8px;
+      padding: 8px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .clip-card-x { border-left: 3px solid #ef4444; }
+    .clip-card-y { border-left: 3px solid #10b981; }
+    .clip-card-z { border-left: 3px solid #3b82f6; }
+
+    .clip-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+    }
+    .clip-tag {
+      font-weight: 600;
+    }
+    .clip-tag-x { color: #f87171; }
+    .clip-tag-y { color: #34d399; }
+    .clip-tag-z { color: #60a5fa; }
+    .clip-status {
+      font-size: 10px;
+      color: #94a3b8;
+    }
+    .clip-status.active {
+      color: #38bdf8;
+      font-weight: 600;
+    }
+
+    /* Digital3DCloud Standard Sectioning UI Styles */
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #cbd5e1;
+      padding: 4px 0;
+    }
+    .setting-col {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .setting-sublabel {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .clip-status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.65);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      color: #94a3b8;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .clip-status-bar strong {
+      color: #38bdf8;
+    }
+
+    /* Multi-Axis Sectioning Controls */
+    .axis-clip-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(15, 23, 42, 0.7);
+      border-radius: 8px;
+      padding: 6px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      gap: 8px;
+    }
+    .axis-clip-row.axis-x { border-left: 3px solid #ef4444; }
+    .axis-clip-row.axis-y { border-left: 3px solid #10b981; }
+    .axis-clip-row.axis-z { border-left: 3px solid #3b82f6; }
+    .axis-clip-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .axis-clip-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .axis-btn-invert {
+      padding: 3px 8px;
+      font-size: 11px;
+      border-radius: 4px;
+      background: #334155;
+      color: #cbd5e1;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .axis-btn-invert:hover {
+      background: #475569;
+      color: #ffffff;
+    }
+    .axis-btn-invert.inverted {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: #f87171;
+      color: #fca5a5;
+    }
+
+    /* iOS / Element-Plus style Switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 20px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .switch-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: #334155;
+      transition: .22s cubic-bezier(0.16, 1, 0.3, 1);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .switch-slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: .22s cubic-bezier(0.16, 1, 0.3, 1);
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+    input:checked + .switch-slider {
+      background-color: #0284c7;
+      border-color: #38bdf8;
+    }
+    input:checked + .switch-slider:before {
+      transform: translateX(18px);
+    }
+
+    /* File input button wrapper */
+    .file-input-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+    .file-input-wrapper input[type="file"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    /* Stats Footer */
+    .status-bar {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 12px;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      z-index: 10;
+    }
+    .status-bar strong {
+      color: #f1f5f9;
+    }
+
+    /* Tip toast */
+    #tool-tip {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #38bdf8;
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 13px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+      z-index: 25;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Drop overlay for drag and drop */
+    #drop-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(2, 132, 199, 0.35);
+      backdrop-filter: blur(4px);
+      border: 3px dashed #38bdf8;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 600;
+      color: #ffffff;
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    /* Central Upload Area */
+    .upload-zone {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 12;
+      background: radial-gradient(circle at center, rgba(30, 41, 59, 0.65) 0%, rgba(15, 23, 42, 0.94) 100%);
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+      cursor: pointer;
+    }
+    .upload-zone.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .upload-zone-card {
+      position: relative;
+      width: 90%;
+      max-width: 520px;
+      padding: 44px 36px;
+      border-radius: 20px;
+      background: rgba(30, 41, 59, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 2px dashed rgba(56, 189, 248, 0.45);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 30px rgba(56, 189, 248, 0.12);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 16px;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .upload-zone:hover .upload-zone-card,
+    .upload-zone.dragover .upload-zone-card {
+      border-color: #38bdf8;
+      background: rgba(30, 41, 59, 0.96);
+      transform: translateY(-2px) scale(1.01);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(56, 189, 248, 0.3);
+    }
+    .upload-zone.dragover .upload-zone-card {
+      border-style: solid;
+      background: rgba(14, 165, 233, 0.2);
+      border-color: #38bdf8;
+    }
+    .upload-icon-box {
+      width: 84px;
+      height: 84px;
+      border-radius: 22px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 2px;
+      transition: all 0.25s ease;
+      box-shadow: inset 0 0 20px rgba(56, 189, 248, 0.15);
+    }
+    .upload-zone:hover .upload-icon-box {
+      transform: translateY(-4px) scale(1.06);
+      background: rgba(56, 189, 248, 0.22);
+      box-shadow: 0 8px 25px rgba(56, 189, 248, 0.35);
+    }
+    .upload-title {
+      font-size: 21px;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: -0.3px;
+    }
+    .upload-desc {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.6;
+      max-width: 400px;
+    }
+    .upload-formats {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+      margin: 4px 0;
+    }
+    .fmt-pill {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #38bdf8;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .upload-browse-btn {
+      margin-top: 4px;
+      background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 26px;
+      border-radius: 10px;
+      border: none;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .upload-browse-btn:hover {
+      background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(2, 132, 199, 0.6);
+    }
+    .upload-browse-btn:active {
+      transform: translateY(1px);
+    }
+    .upload-quick-hint {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 6px;
+    }
+    .hint-link {
+      color: #38bdf8;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      transition: color 0.15s ease;
+    }
+    .hint-link:hover {
+      color: #7dd3fc;
+    }
+  </style>
+</head>
+<body>
+  <div id="app-container">
+    <!-- Header -->
+    <header>
+      <div class="brand">
+        <span>🌐 @giszhc/three-model-viewer</span>
+        <span class="brand-badge">v1.0.0</span>
+      </div>
+
+      <div class="top-actions">
+        <!-- Unload Model Button -->
+        <button id="btn-unload-model" class="danger" style="display: none;">🗑️ 卸载模型</button>
+
+        <!-- ZIP / OBJ / MTL File Upload -->
+        <div class="file-input-wrapper">
+          <button class="primary">📁 打开 ZIP / OBJ / MTL 模型</button>
+          <input type="file" id="file-input" accept=".zip,.obj,.mtl" multiple />
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Viewport -->
+    <div class="main-body">
+      <div id="viewport"></div>
+
+      <!-- Central Upload Area (shown when no model loaded) -->
+      <div id="upload-zone" class="upload-zone">
+        <div class="upload-zone-card" id="upload-zone-card">
+          <div class="upload-icon-box">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </div>
+          <div class="upload-title">点击或拖拽三维模型至此处</div>
+          <div class="upload-desc">
+            支持包含 OBJ、MTL 与贴图材质的 ZIP 压缩包，或者单个 OBJ / MTL 模型文件
+          </div>
+          <div class="upload-formats">
+            <span class="fmt-pill">📦 .ZIP (推荐·含材质贴图)</span>
+            <span class="fmt-pill">📐 .OBJ 网格</span>
+            <span class="fmt-pill">🎨 .MTL 材质</span>
+          </div>
+          <button type="button" class="upload-browse-btn" id="btn-browse-zone">
+            📂 浏览选择本地文件
+          </button>
+          <input type="file" id="zone-file-input" accept=".zip,.obj,.mtl" multiple style="display: none;" />
+        </div>
+      </div>
+
+      <!-- Modern Glassmorphism Loading Modal with Progress -->
+      <div id="loading-overlay" class="gmv-loading-overlay">
+        <div class="gmv-loading-card">
+          <div class="gmv-spinner-ring"></div>
+          <div class="gmv-loading-title" id="loading-title">正在载入三维模型...</div>
+          <div class="gmv-loading-status" id="loading-status">准备解析资源数据...</div>
+          <div class="gmv-progress-track">
+            <div class="gmv-progress-bar" id="loading-bar"></div>
+          </div>
+          <div class="gmv-progress-text" id="loading-percent">0%</div>
+        </div>
+      </div>
+
+      <!-- Drag & drop overlay -->
+      <div id="drop-overlay">拖放 .zip 或 .obj 文件到此处加载</div>
+
+      <!-- Interactive Tip Banner -->
+      <div id="tool-tip"></div>
+
+      <!-- Floating Controls Panel -->
+      <aside class="control-panel">
+        <!-- 1. 视角切换 (6个标准视图) -->
+        <div class="panel-section">
+          <div class="section-title">
+            <span>视角切换 (6个标准视图)</span>
+            <button id="btn-view-fit" style="font-size: 10px; padding: 2px 6px;">🎯 居中复位</button>
+          </div>
+          <div class="btn-group-3">
+            <button data-view="front">前视图</button>
+            <button data-view="back">后视图</button>
+            <button data-view="left">左视图</button>
+            <button data-view="right">右视图</button>
+            <button data-view="top">顶视图</button>
+            <button data-view="bottom">底视图</button>
+          </div>
+        </div>
+
+        <!-- 2. 自动旋转与轴向锁定控制 (支持X/Y轴自转、顺逆时针、X/Y/Z轴向锁定检视) -->
+        <div class="panel-section">
+          <div class="section-title">
+            <span>旋转控制与轴向锁定</span>
+            <span style="font-size: 10px; color: #38bdf8;">默认X轴自转</span>
+          </div>
+
+          <!-- 自动旋转主控制 -->
+          <div class="setting-row">
+            <span class="setting-label">自动旋转 (Auto Rotate)</span>
+            <button type="button" id="btn-toggle-autorotate" style="padding: 3px 12px; background: #0284c7; color: #fff;">▶️ 开始旋转</button>
+          </div>
+
+          <!-- 旋转轴向 (默认X轴) 与 旋转方向 (顺时针/逆时针) -->
+          <div class="setting-col">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span class="setting-sublabel">自转轴 (默认X轴)：</span>
+              <span class="setting-sublabel">自转方向：</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <div class="btn-group-2" style="flex: 1;" id="autorotate-axis-group">
+                <button type="button" id="btn-rot-axis-x" class="active">X 轴</button>
+                <button type="button" id="btn-rot-axis-y">Y 轴</button>
+              </div>
+              <div class="btn-group-2" style="flex: 1;" id="autorotate-dir-group">
+                <button type="button" id="btn-rot-dir-cw" class="active">↻ 顺时针</button>
+                <button type="button" id="btn-rot-dir-ccw">↺ 逆时针</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 视角轴向锁定 (支持锁定X/Y/Z轴检视) -->
+          <div class="setting-col" style="margin-top: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span class="setting-sublabel">检视轴向锁定 (锁定某个轴查看)：</span>
+            </div>
+            <div class="btn-group" id="axis-lock-group">
+              <button type="button" data-lock="x">🔒 锁 X</button>
+              <button type="button" data-lock="y">🔒 锁 Y</button>
+              <button type="button" data-lock="z">🔒 锁 Z</button>
+              <button type="button" data-lock="none" class="active">🔓 自由</button>
+            </div>
+            <div style="font-size: 10px; color: #94a3b8; line-height: 1.4;">
+              💡 锁定某个轴后，鼠标旋转查看将锁定该轴向；锁 Z 轴可防止倾斜与滚转，保持水平正立。
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 测量系统 (每次单次测量，模型表面点选，双击闭合面积) -->
+        <div class="panel-section">
+          <div class="section-title">
+            <span>测量工具 (单次测量)</span>
+            <span style="font-size: 10px; color: #38bdf8;">单次测量完成自动退出</span>
+          </div>
+          <div class="btn-group-2">
+            <button id="btn-measure-dist" data-mode="distance">📏 距离测量</button>
+            <button id="btn-measure-height" data-mode="height">📐 高度测量</button>
+            <button id="btn-measure-angle" data-mode="angle">🧭 角度测量</button>
+            <button id="btn-measure-area" data-mode="area">🔷 面积测量 (双击结束)</button>
+          </div>
+
+          <div class="btn-group-2" style="margin-top: 6px;">
+            <button id="btn-measure-undo">↩️ 撤销一点</button>
+            <button id="btn-measure-clear" class="danger">🗑️ 清除所有测量</button>
+          </div>
+        </div>
+
+        <!-- 3. 剖切系统 (对齐先临三维 Digital3DCloud 交互规范) -->
+        <div class="panel-section">
+          <div class="section-title">
+            <span>剖切分析 (Section View)</span>
+            <button type="button" id="btn-clip-reset" style="font-size: 11px; padding: 2px 8px;">🔄 重置剖切</button>
+          </div>
+
+          <!-- Switch 1: 开启剖切 (Enable Sectioning) -->
+          <div class="setting-row">
+            <span class="setting-label">开启剖切</span>
+            <label class="switch">
+              <input type="checkbox" id="switch-enable-clip" />
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <!-- Collapsible Sectioning Options (visible when enabled) -->
+          <div id="clip-settings-body" style="display: none; flex-direction: column; gap: 10px; margin-top: 4px;">
+            <!-- Option 2: XYZ 多轴同时剖切控制 (多轴可同时开启) -->
+            <div class="setting-col">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span class="setting-sublabel">XYZ 联合剖切 (可同时开启)：</span>
+                <span style="font-size: 10px; color: #38bdf8;">多轴同时生效</span>
+              </div>
+
+              <!-- X 轴 -->
+              <div class="axis-clip-row axis-x" id="axis-row-x">
+                <div class="axis-clip-info">
+                  <span style="color: #f87171;">X 剖切 (长)</span>
+                  <span id="axis-prog-x" style="font-size: 11px; color: #94a3b8; font-weight: normal;">50%</span>
+                </div>
+                <div class="axis-clip-actions">
+                  <button type="button" class="axis-btn-invert" id="btn-invert-x" title="反转保留方向">🔄 反向</button>
+                  <label class="switch" style="width: 34px; height: 18px;">
+                    <input type="checkbox" id="switch-axis-x" checked />
+                    <span class="switch-slider" style="border-radius: 18px;"></span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Y 轴 -->
+              <div class="axis-clip-row axis-y" id="axis-row-y">
+                <div class="axis-clip-info">
+                  <span style="color: #34d399;">Y 剖切 (高)</span>
+                  <span id="axis-prog-y" style="font-size: 11px; color: #94a3b8; font-weight: normal;">50%</span>
+                </div>
+                <div class="axis-clip-actions">
+                  <button type="button" class="axis-btn-invert" id="btn-invert-y" title="反转保留方向">🔄 反向</button>
+                  <label class="switch" style="width: 34px; height: 18px;">
+                    <input type="checkbox" id="switch-axis-y" />
+                    <span class="switch-slider" style="border-radius: 18px;"></span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Z 轴 -->
+              <div class="axis-clip-row axis-z" id="axis-row-z">
+                <div class="axis-clip-info">
+                  <span style="color: #60a5fa;">Z 剖切 (宽)</span>
+                  <span id="axis-prog-z" style="font-size: 11px; color: #94a3b8; font-weight: normal;">50%</span>
+                </div>
+                <div class="axis-clip-actions">
+                  <button type="button" class="axis-btn-invert" id="btn-invert-z" title="反转保留方向">🔄 反向</button>
+                  <label class="switch" style="width: 34px; height: 18px;">
+                    <input type="checkbox" id="switch-axis-z" />
+                    <span class="switch-slider" style="border-radius: 18px;"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Switch 3: 隐藏剖切辅助面 (Hide Sectional Plane) -->
+            <div class="setting-row">
+              <span class="setting-label">隐藏剖切面 (保持切除)</span>
+              <label class="switch">
+                <input type="checkbox" id="switch-hide-plane-helper" />
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <div style="font-size: 11px; color: #94a3b8; line-height: 1.4;">
+              💡 鼠标直接在模型上的<strong>半透明剖切面或中心手柄</strong>上按下拖拽，即可实时裁剪模型内部；双击面可快速翻转方向。剖切面严格贴合模型包围盒不外溢。
+            </div>
+
+            <!-- Custom 2-Point Plane Clip -->
+            <div class="btn-group-2" style="margin-top: 2px;">
+              <button id="btn-clip-custom">✏️ 2点划线自定义剖切</button>
+              <button id="btn-clip-custom-invert">🔄 切换左右剖切</button>
+            </div>
+
+            <!-- Full Reset Button -->
+            <button type="button" id="btn-clip-reset-inner" style="width: 100%; margin-top: 2px; background: rgba(51, 65, 85, 0.8);">🔄 一键重置所有剖切面至中心</button>
+          </div>
+        </div>
+
+        <!-- 4. 范围框、长宽高与旋转联动 -->
+        <div class="panel-section">
+          <div class="section-title">范围框与尺寸标注 (长/宽/高)</div>
+          <div class="btn-group-2">
+            <button id="btn-toggle-bbox" class="active">📦 范围框及尺寸线</button>
+            <button id="btn-rotate-model">🔄 旋转模型 (验证联动)</button>
+          </div>
+          <div style="font-size: 11px; color: #94a3b8; line-height: 1.4;">
+            💡 随着模型旋转，长宽高引导线与尺寸标签自动跟随当前3个轴向自适应显示。
+          </div>
+        </div>
+
+        <!-- 5. 模型显示样式、材质贴图与背景设置 -->
+        <div class="panel-section">
+          <div class="section-title">
+            <span>外观与显示样式</span>
+            <span id="current-style-badge" style="font-size: 10px; color: #38bdf8;">实体表面</span>
+          </div>
+
+          <!-- 模型显示样式：实体表面 / 网格线框 / 离散点云 -->
+          <div class="setting-col">
+            <div style="font-size: 11px; color: #cbd5e1; margin-bottom: 2px;">显示模式 (Display Style)：</div>
+            <div class="btn-group-3" id="display-style-group">
+              <button type="button" data-style="solid" class="active" id="btn-style-solid">🧊 实体</button>
+              <button type="button" data-style="wireframe" id="btn-style-wireframe">🕸️ 网格</button>
+              <button type="button" data-style="points" id="btn-style-points">✨ 点云</button>
+            </div>
+
+            <!-- 点云大小调节 (仅在点云模式下展开) -->
+            <div id="point-size-container" style="display: none; margin-top: 8px; flex-direction: column; gap: 4px; background: rgba(15, 23, 42, 0.4); padding: 8px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.2);">
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #94a3b8;">
+                <span>点云大小 (Point Size)：</span>
+                <span id="point-size-val" style="color: #38bdf8; font-weight: 600;">2.5 px</span>
+              </div>
+              <input type="range" id="slider-point-size" min="1" max="10" step="0.5" value="2.5" style="width: 100%; accent-color: #38bdf8; cursor: pointer;" />
+            </div>
+          </div>
+
+          <div class="btn-group-2" style="margin-top: 4px;">
+            <button id="btn-toggle-texture" class="active">🎨 贴图开关 (纹理/白模)</button>
+            <button id="btn-toggle-grid">🏁 地面网格</button>
+          </div>
+
+          <div style="font-size: 11px; color: #cbd5e1; margin-top: 4px;">背景方案：</div>
+          <div class="btn-group">
+            <button data-bg="#181c24" class="active">深灰</button>
+            <button data-bg="#090d16">深邃黑</button>
+            <button data-bg="#e2e8f0" style="color: #0f172a;">浅灰</button>
+            <button data-bg="transparent">透明</button>
+          </div>
+        </div>
+
+        <!-- 6. 高清图片导出 -->
+        <div class="panel-section">
+          <div class="section-title">高清图片导出</div>
+          <div class="btn-group-3">
+            <button id="btn-export-1x">📷 1x 标清</button>
+            <button id="btn-export-2x" class="primary">📸 2x 高清 (2K)</button>
+            <button id="btn-export-4x">🖼️ 4x 超清 (4K)</button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Bottom Status Bar -->
+      <div class="status-bar">
+        <div>顶点数: <strong id="stat-verts">-</strong></div>
+        <div>三角面数: <strong id="stat-faces">-</strong></div>
+        <div>模型尺寸: <strong id="stat-dims">-</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

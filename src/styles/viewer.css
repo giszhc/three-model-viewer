@@ -1,0 +1,262 @@
+/* Styles for 3D Viewport Labels & Overlays */
+
+.gmv-css2d-label {
+  pointer-events: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  user-select: none;
+  z-index: 10;
+}
+
+/* Measurement Result Badge */
+.gmv-measure-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(18, 22, 33, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  transition: all 0.2s ease;
+}
+
+.gmv-measure-badge.distance {
+  border-left: 3px solid #3b82f6; /* Blue */
+}
+
+.gmv-measure-badge.height {
+  border-left: 3px solid #10b981; /* Green */
+}
+
+.gmv-measure-badge.area {
+  border-left: 3px solid #f59e0b; /* Amber */
+}
+
+.gmv-measure-badge.volume {
+  border-left: 3px solid #8b5cf6; /* Purple */
+}
+
+.gmv-measure-badge.angle {
+  border-left: 3px solid #ec4899; /* Pink */
+}
+
+.gmv-volume-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: rgba(18, 22, 33, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #ffffff;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-left: 3px solid #8b5cf6;
+  white-space: nowrap;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+
+/* Dimension Labels (L, W, H on Bounding Box) */
+.gmv-dimension-badge {
+  background: rgba(20, 24, 36, 0.85);
+  backdrop-filter: blur(6px);
+  color: #e2e8f0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gmv-dimension-badge.dim-x {
+  color: #f87171; /* Red-ish for X / Length */
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.gmv-dimension-badge.dim-y {
+  color: #34d399; /* Green-ish for Y / Height */
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.gmv-dimension-badge.dim-z {
+  color: #60a5fa; /* Blue-ish for Z / Width */
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+/* Tooltip Guide during interactive measuring/clipping */
+.gmv-interaction-tip {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.9);
+  color: #f8fafc;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  font-size: 13px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  pointer-events: none;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.gmv-interaction-tip.hidden {
+  opacity: 0;
+  transform: translate(-50%, 10px);
+  pointer-events: none;
+}
+
+/* Gorgeous Glassmorphism Loading Modal */
+.gmv-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 15, 29, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gmv-loading-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.gmv-loading-card {
+  width: 380px;
+  background: rgba(22, 30, 49, 0.94);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(56, 189, 248, 0.2);
+  border-radius: 16px;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  transform: scale(0.92);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gmv-loading-overlay.active .gmv-loading-card {
+  transform: scale(1);
+}
+
+.gmv-spinner-ring {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid rgba(56, 189, 248, 0.18);
+  border-top-color: #38bdf8;
+  animation: gmv-spin 0.85s linear infinite;
+}
+
+@keyframes gmv-spin {
+  to { transform: rotate(360deg); }
+}
+
+.gmv-loading-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #f1f5f9;
+  letter-spacing: 0.3px;
+}
+
+.gmv-loading-status {
+  font-size: 12px;
+  color: #94a3b8;
+  min-height: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+
+.gmv-progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(51, 65, 85, 0.6);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.gmv-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #0284c7, #38bdf8, #818cf8);
+  border-radius: 999px;
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
+}
+
+.gmv-progress-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #38bdf8;
+  align-self: flex-end;
+  margin-top: -6px;
+}
+
+/* 3D Clipping Plane Badges */
+.gmv-plane-badge {
+  pointer-events: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  user-select: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #ffffff;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gmv-plane-badge-x {
+  background: rgba(220, 38, 38, 0.88);
+  border-color: #f87171;
+}
+
+.gmv-plane-badge-y {
+  background: rgba(5, 150, 105, 0.88);
+  border-color: #34d399;
+}
+
+.gmv-plane-badge-z {
+  background: rgba(37, 99, 235, 0.88);
+  border-color: #60a5fa;
+}
