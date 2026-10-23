@@ -6,59 +6,97 @@
   <title>三维模型交互展示平台 - @giszhc/three-model-viewer</title>
   <style>
     :root {
-      /* Liquid Glass Dark (Default Obsidian Fluid Glass) */
-      --bg-primary: #080c16;
-      --bg-secondary: #0c1220;
-      --panel-bg: rgba(12, 18, 34, 0.68);
-      --panel-border: rgba(255, 255, 255, 0.16);
-      --panel-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.65), 
-                      inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.35), 
-                      inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+      /* Liquid Glass Dark (Obsidian Fluid Glass with Vibrant Light Sheen) */
+      --bg-primary: #060913;
+      --bg-secondary: #0a0f1d;
+      --panel-bg: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.22) 0%,
+        rgba(255, 255, 255, 0.08) 18%,
+        rgba(56, 189, 248, 0.12) 55%,
+        rgba(10, 16, 32, 0.86) 100%
+      );
+      --panel-border: rgba(255, 255, 255, 0.4);
+      --panel-shadow: 
+        0 24px 64px -12px rgba(0, 0, 0, 0.8),
+        0 0 45px -4px rgba(14, 165, 233, 0.35),
+        inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.85),
+        inset 0 -2px 5px 0 rgba(14, 165, 233, 0.4),
+        inset 0 0 20px 0 rgba(255, 255, 255, 0.1);
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --text-sub: #64748b;
-      --btn-bg: rgba(255, 255, 255, 0.07);
-      --btn-hover: rgba(255, 255, 255, 0.14);
-      --btn-border: rgba(255, 255, 255, 0.15);
+      --btn-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 100%);
+      --btn-hover: linear-gradient(135deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.12) 100%);
+      --btn-border: rgba(255, 255, 255, 0.45);
       --accent: #0ea5e9;
       --accent-hover: #38bdf8;
-      --accent-glow: rgba(14, 165, 233, 0.45);
-      --dock-bg: rgba(11, 17, 32, 0.72);
-      --dock-border: rgba(255, 255, 255, 0.22);
-      --popover-bg: rgba(10, 15, 28, 0.85);
-      --card-bg: rgba(255, 255, 255, 0.05);
+      --accent-glow: rgba(14, 165, 233, 0.65);
+      --dock-bg: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.28) 0%,
+        rgba(255, 255, 255, 0.1) 22%,
+        rgba(14, 165, 233, 0.16) 58%,
+        rgba(10, 16, 32, 0.88) 100%
+      );
+      --dock-border: rgba(255, 255, 255, 0.55);
+      --popover-bg: linear-gradient(
+        145deg,
+        rgba(255, 255, 255, 0.22) 0%,
+        rgba(255, 255, 255, 0.08) 25%,
+        rgba(9, 14, 28, 0.95) 100%
+      );
+      --card-bg: rgba(255, 255, 255, 0.08);
       --switch-bg: #334155;
-      --liquid-blur: blur(28px) saturate(190%);
-      --liquid-hero-blur: blur(34px) saturate(205%);
-      --liquid-rim: inset 0 1px 1px 0 rgba(255, 255, 255, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+      --liquid-blur: blur(28px) saturate(220%);
+      --liquid-hero-blur: blur(36px) saturate(240%);
+      --liquid-rim: inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.85), inset 0 -1.5px 3px 0 rgba(14, 165, 233, 0.4);
+      --liquid-glow: 0 0 40px rgba(56, 189, 248, 0.55);
     }
 
     [data-theme="light"] {
-      /* Liquid Glass Light (Crystal Fluid Glass) */
-      --bg-primary: #f0f4f9;
+      /* Liquid Glass Light (Ice Crystal Fluid Glass with Prismatic Sparkle) */
+      --bg-primary: #edf4fc;
       --bg-secondary: #ffffff;
-      --panel-bg: rgba(255, 255, 255, 0.72);
-      --panel-border: rgba(255, 255, 255, 0.85);
-      --panel-shadow: 0 20px 48px -10px rgba(0, 0, 0, 0.07), 
-                      inset 0 1.5px 3px 0 rgba(255, 255, 255, 0.95), 
-                      inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+      --panel-bg: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.98) 0%,
+        rgba(255, 255, 255, 0.82) 35%,
+        rgba(218, 241, 254, 0.9) 100%
+      );
+      --panel-border: rgba(255, 255, 255, 0.95);
+      --panel-shadow: 
+        0 20px 48px -10px rgba(0, 0, 0, 0.1),
+        0 0 40px -5px rgba(2, 132, 199, 0.28),
+        inset 0 2px 4px 0 #ffffff,
+        inset 0 -2px 4px 0 rgba(2, 132, 199, 0.28);
       --text-main: #0f172a;
       --text-muted: #475569;
       --text-sub: #94a3b8;
-      --btn-bg: rgba(255, 255, 255, 0.7);
-      --btn-hover: rgba(255, 255, 255, 0.95);
-      --btn-border: rgba(0, 0, 0, 0.06);
+      --btn-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.72) 100%);
+      --btn-hover: linear-gradient(135deg, #ffffff 0%, rgba(235, 245, 255, 0.98) 100%);
+      --btn-border: #ffffff;
       --accent: #0284c7;
       --accent-hover: #0369a1;
-      --accent-glow: rgba(2, 132, 199, 0.3);
-      --dock-bg: rgba(255, 255, 255, 0.78);
-      --dock-border: rgba(255, 255, 255, 0.9);
-      --popover-bg: rgba(255, 255, 255, 0.88);
-      --card-bg: rgba(241, 245, 249, 0.75);
+      --accent-glow: rgba(2, 132, 199, 0.45);
+      --dock-bg: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.98) 0%,
+        rgba(255, 255, 255, 0.86) 35%,
+        rgba(224, 242, 254, 0.92) 100%
+      );
+      --dock-border: #ffffff;
+      --popover-bg: linear-gradient(
+        145deg,
+        rgba(255, 255, 255, 0.99) 0%,
+        rgba(255, 255, 255, 0.94) 100%
+      );
+      --card-bg: rgba(241, 245, 249, 0.85);
       --switch-bg: #cbd5e1;
-      --liquid-blur: blur(28px) saturate(190%);
-      --liquid-hero-blur: blur(34px) saturate(205%);
-      --liquid-rim: inset 0 1.5px 3px 0 rgba(255, 255, 255, 1), inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+      --liquid-blur: blur(28px) saturate(220%);
+      --liquid-hero-blur: blur(36px) saturate(240%);
+      --liquid-rim: inset 0 2px 4px 0 #ffffff, inset 0 -1.5px 3px 0 rgba(2, 132, 199, 0.28);
+      --liquid-glow: 0 0 35px rgba(2, 132, 199, 0.4);
     }
 
     * {
@@ -161,6 +199,7 @@
 
     /* Unified Liquid Glass Button Styles */
     .btn {
+      position: relative;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -172,6 +211,8 @@
       color: var(--text-main);
       background: var(--btn-bg);
       border: 1px solid var(--btn-border);
+      border-top-color: rgba(255, 255, 255, 0.65);
+      border-bottom-color: rgba(14, 165, 233, 0.35);
       backdrop-filter: var(--liquid-blur);
       -webkit-backdrop-filter: var(--liquid-blur);
       cursor: pointer;
@@ -180,7 +221,8 @@
     }
     .btn:hover {
       background: var(--btn-hover);
-      border-color: rgba(255, 255, 255, 0.35);
+      border-color: rgba(255, 255, 255, 0.45);
+      border-top-color: rgba(255, 255, 255, 0.85);
       transform: translateY(-1.5px);
       box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18), var(--liquid-rim);
     }
@@ -188,14 +230,17 @@
       transform: translateY(0.5px) scale(0.97);
     }
     .btn.primary {
-      background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
-      border-color: rgba(255, 255, 255, 0.35);
+      background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 45%, #38bdf8 100%);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-top-color: rgba(255, 255, 255, 0.88);
+      border-bottom-color: rgba(2, 132, 199, 0.6);
       color: #ffffff;
-      box-shadow: 0 4px 18px var(--accent-glow), var(--liquid-rim);
+      box-shadow: 0 4px 18px var(--accent-glow), 0 0 25px rgba(56, 189, 248, 0.4), var(--liquid-rim);
     }
     .btn.primary:hover {
-      background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);
-      box-shadow: 0 6px 22px var(--accent-glow), var(--liquid-rim);
+      background: linear-gradient(135deg, #0369a1 0%, #0284c7 45%, #0ea5e9 100%);
+      border-color: rgba(255, 255, 255, 0.65);
+      box-shadow: 0 6px 26px var(--accent-glow), 0 0 35px rgba(56, 189, 248, 0.55), var(--liquid-rim);
     }
     .btn.active {
       background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
@@ -829,12 +874,130 @@
       background: linear-gradient(90deg, #0284c7, #38bdf8);
       transition: width 0.2s ease;
     }
+
+    /* ========================================================
+       LIQUID AMBIENT AURA (Prismatic Fluid Caustics Background)
+       ======================================================== */
+    .liquid-ambient-aura {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 2;
+      mix-blend-mode: screen;
+      opacity: 0.85;
+      transition: opacity 0.5s ease;
+    }
+    [data-theme="light"] .liquid-ambient-aura {
+      mix-blend-mode: multiply;
+      opacity: 0.42;
+    }
+    .aura-blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(85px);
+      will-change: transform;
+      animation: auraFloat 14s ease-in-out infinite alternate;
+    }
+    .aura-blob-1 {
+      bottom: -60px;
+      left: 50%;
+      width: 620px;
+      height: 240px;
+      transform: translateX(-50%);
+      background: radial-gradient(ellipse at center, rgba(14, 165, 233, 0.55) 0%, rgba(56, 189, 248, 0.25) 50%, transparent 75%);
+      animation-duration: 11s;
+    }
+    .aura-blob-2 {
+      top: -40px;
+      left: 40px;
+      width: 480px;
+      height: 240px;
+      background: radial-gradient(ellipse at center, rgba(99, 102, 241, 0.45) 0%, rgba(14, 165, 233, 0.25) 55%, transparent 80%);
+      animation-duration: 16s;
+    }
+    .aura-blob-3 {
+      top: 38%;
+      right: -80px;
+      width: 460px;
+      height: 420px;
+      background: radial-gradient(ellipse at center, rgba(56, 189, 248, 0.4) 0%, rgba(14, 165, 233, 0.15) 60%, transparent 80%);
+      animation-duration: 18s;
+      animation-direction: alternate-reverse;
+    }
+    @keyframes auraFloat {
+      0% {
+        transform: translate(0, 0) scale(1);
+      }
+      50% {
+        transform: translate(25px, -18px) scale(1.08);
+      }
+      100% {
+        transform: translate(-18px, 12px) scale(0.94);
+      }
+    }
+
+    /* Specular Rim Sheen: 弧面凸透镜顶部高光亮弧 */
+    .dock-container::before,
+    .brand-pill::before,
+    .popover-menu::before,
+    .side-drawer::before,
+    .upload-card::before,
+    .hud-badge::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 10%;
+      right: 10%;
+      height: 1.5px;
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.95) 50%, rgba(255, 255, 255, 0) 100%);
+      border-radius: 999px;
+      pointer-events: none;
+      z-index: 5;
+    }
+    [data-theme="light"] .dock-container::before,
+    [data-theme="light"] .brand-pill::before,
+    [data-theme="light"] .popover-menu::before,
+    [data-theme="light"] .side-drawer::before,
+    [data-theme="light"] .upload-card::before,
+    [data-theme="light"] .hud-badge::before {
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, #ffffff 50%, rgba(255, 255, 255, 0) 100%);
+    }
+
+    /* Directional Edge Refraction: 定向物理受光边缘 */
+    .dock-container,
+    .brand-pill,
+    .upload-card,
+    .side-drawer,
+    .popover-menu {
+      border-top-color: rgba(255, 255, 255, 0.65) !important;
+      border-left-color: rgba(255, 255, 255, 0.4) !important;
+      border-right-color: rgba(56, 189, 248, 0.3) !important;
+      border-bottom-color: rgba(56, 189, 248, 0.2) !important;
+    }
+    [data-theme="light"] .dock-container,
+    [data-theme="light"] .brand-pill,
+    [data-theme="light"] .upload-card,
+    [data-theme="light"] .side-drawer,
+    [data-theme="light"] .popover-menu {
+      border-top-color: #ffffff !important;
+      border-left-color: #ffffff !important;
+      border-right-color: rgba(224, 242, 254, 0.95) !important;
+      border-bottom-color: rgba(186, 230, 253, 0.8) !important;
+    }
   </style>
 </head>
 <body>
   <div id="app-container">
     <!-- 3D Canvas Viewport -->
     <div id="viewport"></div>
+
+    <!-- Liquid Ambient Aura (Dynamic Prismatic Light Background) -->
+    <div class="liquid-ambient-aura" aria-hidden="true">
+      <div class="aura-blob aura-blob-1"></div>
+      <div class="aura-blob aura-blob-2"></div>
+      <div class="aura-blob aura-blob-3"></div>
+    </div>
 
     <!-- Interactive Top Bar -->
     <header class="top-bar">
@@ -880,18 +1043,16 @@
           <span>卸载</span>
         </button>
 
-        <!-- Open Model Button -->
-        <div class="file-input-wrap">
-          <button class="btn primary">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            <span>打开模型</span>
-          </button>
-          <input type="file" id="file-input" accept=".zip,.obj,.mtl" multiple />
-        </div>
+        <!-- Open Model Button (Native Semantic Label for 100% Reliable File Picker) -->
+        <label for="file-input" class="btn primary" id="btn-top-open" style="cursor: pointer;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <span>打开模型</span>
+        </label>
+        <input type="file" id="file-input" accept=".zip,.obj,.mtl" multiple style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; overflow: hidden;" />
 
         <!-- Export Dropdown Button -->
         <div style="position: relative;" id="export-menu-wrapper" class="hidden">
@@ -966,14 +1127,14 @@
           <span class="fmt-pill">📐 .OBJ 网格</span>
         </div>
         <div style="display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; justify-content: center;">
-          <button type="button" class="btn primary" id="btn-browse-zone" style="padding: 10px 22px; font-size: 13px; border-radius: 12px;">
+          <label for="zone-file-input" class="btn primary" id="btn-browse-zone" style="padding: 10px 22px; font-size: 13px; border-radius: 12px; cursor: pointer;">
             📂 浏览本地文件
-          </button>
+          </label>
           <button type="button" class="btn" id="btn-load-sample" style="padding: 10px 18px; font-size: 13px; border-radius: 12px; border: 1px solid var(--accent); color: var(--accent);">
             🌟 体验示例模型
           </button>
         </div>
-        <input type="file" id="zone-file-input" accept=".zip,.obj,.mtl" multiple style="display: none;" />
+        <input type="file" id="zone-file-input" accept=".zip,.obj,.mtl" multiple style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; overflow: hidden;" />
       </div>
     </div>
 

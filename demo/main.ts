@@ -27,9 +27,10 @@ const btnDockTools = document.getElementById('btn-dock-tools') as HTMLButtonElem
 // Central Upload Zone Elements
 const uploadZone = document.getElementById('upload-zone') as HTMLElement;
 const zoneFileInput = document.getElementById('zone-file-input') as HTMLInputElement;
-const btnBrowseZone = document.getElementById('btn-browse-zone') as HTMLButtonElement;
+const btnBrowseZone = document.getElementById('btn-browse-zone') as HTMLElement;
 const btnLoadSample = document.getElementById('btn-load-sample') as HTMLButtonElement;
 const btnUnloadModel = document.getElementById('btn-unload-model') as HTMLButtonElement;
+const btnTopOpen = document.getElementById('btn-top-open') as HTMLElement;
 
 // Modern Glassmorphism Loading Modal Elements
 const loadingOverlay = document.getElementById('loading-overlay') as HTMLElement;
@@ -245,7 +246,9 @@ if (viewer.currentModelInfo) {
 // ==========================================
 btnBrowseZone?.addEventListener('click', (e) => {
   e.stopPropagation();
-  zoneFileInput?.click();
+  if (e.target !== zoneFileInput) {
+    zoneFileInput?.click();
+  }
 });
 
 btnLoadSample?.addEventListener('click', (e) => {
@@ -259,7 +262,7 @@ btnLoadSample?.addEventListener('click', (e) => {
 
 uploadZone?.addEventListener('click', (e) => {
   const target = e.target as HTMLElement;
-  if (target.classList.contains('hint-link') || target.closest('#btn-load-sample')) return;
+  if (target.classList.contains('hint-link') || target.closest('#btn-load-sample') || target.closest('#btn-browse-zone')) return;
   zoneFileInput?.click();
 });
 
@@ -268,6 +271,7 @@ zoneFileInput?.addEventListener('change', async (e) => {
   if (target.files && target.files.length > 0) {
     await handleLoadedFiles(target.files);
   }
+  target.value = '';
 });
 
 uploadZone?.addEventListener('dragenter', (e) => {
@@ -343,11 +347,17 @@ async function handleLoadedFiles(fileList: FileList | File[]): Promise<void> {
 }
 
 const fileInput = document.getElementById('file-input') as HTMLInputElement;
+btnTopOpen?.addEventListener('click', (e) => {
+  if (e.target !== fileInput) {
+    fileInput?.click();
+  }
+});
 fileInput?.addEventListener('change', async (e) => {
   const target = e.target as HTMLInputElement;
-  if (target.files) {
+  if (target.files && target.files.length > 0) {
     await handleLoadedFiles(target.files);
   }
+  target.value = '';
 });
 
 // Drag and drop handling
