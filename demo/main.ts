@@ -28,7 +28,6 @@ const btnDockTools = document.getElementById('btn-dock-tools') as HTMLButtonElem
 const uploadZone = document.getElementById('upload-zone') as HTMLElement;
 const zoneFileInput = document.getElementById('zone-file-input') as HTMLInputElement;
 const btnBrowseZone = document.getElementById('btn-browse-zone') as HTMLElement;
-const btnLoadSample = document.getElementById('btn-load-sample') as HTMLButtonElement;
 const btnUnloadModel = document.getElementById('btn-unload-model') as HTMLButtonElement;
 const btnTopOpen = document.getElementById('btn-top-open') as HTMLElement;
 
@@ -362,18 +361,9 @@ btnBrowseZone?.addEventListener('click', (e) => {
   }
 });
 
-btnLoadSample?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  if (brandModelName) brandModelName.textContent = '工业装配体 (示例)';
-  showTip('🚀 正在初始化工业示例模型...');
-  viewer.loadSampleGeometry('mechanical');
-  showTip('✅ 示例模型载入完成，已就绪！');
-  setTimeout(hideTip, 2500);
-});
-
 uploadZone?.addEventListener('click', (e) => {
   const target = e.target as HTMLElement;
-  if (target.classList.contains('hint-link') || target.closest('#btn-load-sample') || target.closest('#btn-browse-zone')) return;
+  if (target.classList.contains('hint-link') || target.closest('#btn-browse-zone')) return;
   zoneFileInput?.click();
 });
 
