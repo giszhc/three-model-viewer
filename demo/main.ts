@@ -1,3 +1,4 @@
+import gsap from 'gsap';
 import { Viewer } from '../src/index';
 import { CameraView, MeasurementType, ModelLoadResult, ModelDisplayStyle } from '../src/types';
 
@@ -5,7 +6,7 @@ import { CameraView, MeasurementType, ModelLoadResult, ModelDisplayStyle } from 
 const viewport = document.getElementById('viewport') as HTMLElement;
 const viewer = new Viewer({
   container: viewport,
-  background: '#181c24',
+  background: '#080c16',
   unit: 'm',
   antialias: true,
 });
@@ -20,6 +21,8 @@ const dockBar = document.getElementById('dock-bar') as HTMLElement;
 const hudBadge = document.getElementById('hud-badge') as HTMLElement;
 const exportMenuWrapper = document.getElementById('export-menu-wrapper') as HTMLElement;
 const btnToggleBbox = document.getElementById('btn-toggle-bbox') as HTMLButtonElement;
+const sideDrawer = document.getElementById('side-drawer') as HTMLElement;
+const btnDockTools = document.getElementById('btn-dock-tools') as HTMLButtonElement;
 
 // Central Upload Zone Elements
 const uploadZone = document.getElementById('upload-zone') as HTMLElement;
@@ -35,13 +38,34 @@ const loadingStatus = document.getElementById('loading-status') as HTMLElement;
 const loadingBar = document.getElementById('loading-bar') as HTMLElement;
 const loadingPercent = document.getElementById('loading-percent') as HTMLElement;
 
-function showTip(text: string): void {
+let tipTimer: number | null = null;
+function showTip(text: string, duration: number = 2500): void {
+  if (tipTimer) clearTimeout(tipTimer);
   toolTip.textContent = text;
   toolTip.style.display = 'flex';
+  gsap.killTweensOf(toolTip);
+  gsap.fromTo(
+    toolTip,
+    { y: -18, opacity: 0, scale: 0.92 },
+    { y: 0, opacity: 1, scale: 1, duration: 0.38, ease: 'back.out(1.7)' }
+  );
+  tipTimer = window.setTimeout(() => {
+    hideTip();
+  }, duration);
 }
 
 function hideTip(): void {
-  toolTip.style.display = 'none';
+  gsap.killTweensOf(toolTip);
+  gsap.to(toolTip, {
+    y: -12,
+    opacity: 0,
+    scale: 0.95,
+    duration: 0.25,
+    ease: 'power2.in',
+    onComplete: () => {
+      toolTip.style.display = 'none';
+    },
+  });
 }
 
 // Update model stats
@@ -53,9 +77,22 @@ function updateStats(result: ModelLoadResult): void {
 
 /**
  * Centrally toggle UI presence: hide all tools, bounding box controls, dock, stats, and drawer when no model is loaded.
+ * Enhanced with silky-smooth GSAP physics spring transitions.
  */
 function updateModelPresenceUI(hasModel: boolean, modelName?: string): void {
   if (hasModel) {
+    // Crossfade upload zone out
+    gsap.to(uploadZone, {
+      opacity: 0,
+      scale: 0.98,
+      duration: 0.35,
+      ease: 'power2.inOut',
+      onComplete: () => {
+        uploadZone?.classList.add('hidden');
+        gsap.set(uploadZone, { clearProps: 'all' });
+      },
+    });
+
     dockBar?.classList.remove('hidden');
     hudBadge?.classList.remove('hidden');
     exportMenuWrapper?.classList.remove('hidden');
@@ -64,26 +101,88 @@ function updateModelPresenceUI(hasModel: boolean, modelName?: string): void {
       brandModelName.style.display = 'inline-block';
       if (modelName) brandModelName.textContent = modelName;
     }
-    uploadZone?.classList.add('hidden');
+
+    // Liquid spring entrance
+    gsap.killTweensOf([dockBar, hudBadge, exportMenuWrapper, btnUnloadModel]);
+    gsap.fromTo(
+      dockBar,
+      { y: 36, opacity: 0, scale: 0.94 },
+      { y: 0, opacity: 1, scale: 1, duration: 0.6, ease: 'back.out(1.4)', clearProps: 'transform,scale' }
+    );
+
+    gsap.fromTo(
+      hudBadge,
+      { y: 24, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.45, delay: 0.08, ease: 'power3.out', clearProps: 'transform' }
+    );
+
+    gsap.fromTo(
+      exportMenuWrapper,
+      { y: -10, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.35, delay: 0.12, ease: 'power2.out', clearProps: 'transform' }
+    );
+
+    if (btnUnloadModel) {
+      gsap.fromTo(
+        btnUnloadModel,
+        { scale: 0.8, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.35, delay: 0.16, ease: 'back.out(2)', clearProps: 'transform,scale' }
+      );
+    }
   } else {
-    dockBar?.classList.add('hidden');
-    hudBadge?.classList.add('hidden');
-    exportMenuWrapper?.classList.add('hidden');
+    // Exit animations with smooth retraction
+    gsap.killTweensOf([dockBar, hudBadge, exportMenuWrapper, btnUnloadModel]);
+    gsap.to(dockBar, {
+      y: 32,
+      opacity: 0,
+      scale: 0.95,
+      duration: 0.3,
+      ease: 'power2.in',
+      onComplete: () => {
+        dockBar?.classList.add('hidden');
+        gsap.set(dockBar, { clearProps: 'all' });
+      },
+    });
+
+    gsap.to(hudBadge, {
+      y: 18,
+      opacity: 0,
+      duration: 0.25,
+      ease: 'power2.in',
+      onComplete: () => {
+        hudBadge?.classList.add('hidden');
+        gsap.set(hudBadge, { clearProps: 'all' });
+      },
+    });
+
+    gsap.to(exportMenuWrapper, {
+      y: -8,
+      opacity: 0,
+      duration: 0.2,
+      ease: 'power2.in',
+      onComplete: () => {
+        exportMenuWrapper?.classList.add('hidden');
+        gsap.set(exportMenuWrapper, { clearProps: 'all' });
+      },
+    });
+
     if (btnUnloadModel) btnUnloadModel.style.display = 'none';
     if (brandModelName) {
       brandModelName.style.display = 'none';
       brandModelName.textContent = '';
     }
+
+    // Bring upload zone back smoothly
     uploadZone?.classList.remove('hidden');
+    gsap.fromTo(
+      uploadZone,
+      { opacity: 0, scale: 0.98 },
+      { opacity: 1, scale: 1, duration: 0.4, ease: 'power2.out', clearProps: 'all' }
+    );
 
     // Close side drawer & active popovers
-    const sideDrawer = document.getElementById('side-drawer');
-    const btnDockTools = document.getElementById('btn-dock-tools');
-    sideDrawer?.classList.remove('open');
-    btnDockTools?.classList.remove('active');
-
-    const popovers = document.querySelectorAll('.popover-menu');
-    popovers.forEach((p) => p.classList.remove('open'));
+    animateDrawerClose();
+    closeAllPopovers();
 
     // Reset stats & tools
     statVerts.textContent = '-';
@@ -313,7 +412,7 @@ document.getElementById('btn-toggle-fullscreen')?.addEventListener('click', () =
 });
 
 // ==========================================
-// Popover Menus Manager (Dock & Top Menus)
+// Popover Menus Manager (Dock & Top Menus with GSAP)
 // ==========================================
 const popoverViews = document.getElementById('popover-views') as HTMLElement;
 const popoverAutorotate = document.getElementById('popover-autorotate') as HTMLElement;
@@ -322,12 +421,66 @@ const popoverExport = document.getElementById('popover-export') as HTMLElement;
 
 const allPopovers = [popoverViews, popoverAutorotate, popoverAppearance, popoverExport];
 
+function openPopover(popover: HTMLElement): void {
+  popover.classList.add('open');
+  const isTop = popover.classList.contains('popover-menu-top');
+  gsap.killTweensOf(popover);
+  gsap.fromTo(
+    popover,
+    {
+      opacity: 0,
+      scale: 0.93,
+      y: isTop ? -14 : 16,
+    },
+    {
+      opacity: 1,
+      scale: 1,
+      y: 0,
+      duration: 0.36,
+      ease: 'back.out(1.5)',
+      clearProps: 'transform,scale',
+    }
+  );
+}
+
+function closePopover(popover: HTMLElement): void {
+  if (!popover.classList.contains('open')) return;
+  const isTop = popover.classList.contains('popover-menu-top');
+  gsap.killTweensOf(popover);
+  gsap.to(popover, {
+    opacity: 0,
+    scale: 0.95,
+    y: isTop ? -8 : 10,
+    duration: 0.2,
+    ease: 'power2.in',
+    onComplete: () => {
+      popover.classList.remove('open');
+      gsap.set(popover, { clearProps: 'all' });
+    },
+  });
+}
+
 function togglePopover(targetPopover: HTMLElement): void {
   const isOpen = targetPopover.classList.contains('open');
-  allPopovers.forEach((p) => p?.classList.remove('open'));
-  if (!isOpen) {
-    targetPopover.classList.add('open');
+  allPopovers.forEach((p) => {
+    if (p && p !== targetPopover && p.classList.contains('open')) {
+      closePopover(p);
+    }
+  });
+
+  if (isOpen) {
+    closePopover(targetPopover);
+  } else {
+    openPopover(targetPopover);
   }
+}
+
+function closeAllPopovers(): void {
+  allPopovers.forEach((p) => {
+    if (p && p.classList.contains('open')) {
+      closePopover(p);
+    }
+  });
 }
 
 document.getElementById('btn-dock-views')?.addEventListener('click', (e) => {
@@ -354,31 +507,72 @@ document.getElementById('btn-export-menu-toggle')?.addEventListener('click', (e)
 document.addEventListener('click', (e) => {
   const target = e.target as HTMLElement;
   if (!target.closest('.popover-menu') && !target.closest('.dock-btn') && !target.closest('#btn-export-menu-toggle')) {
-    allPopovers.forEach((p) => p?.classList.remove('open'));
+    closeAllPopovers();
   }
 });
 
 // ==========================================
-// Side Drawer (Toolbox: Measure & Sectioning)
+// Side Drawer (Toolbox: Measure & Sectioning with GSAP)
 // ==========================================
-const sideDrawer = document.getElementById('side-drawer') as HTMLElement;
-const btnDockTools = document.getElementById('btn-dock-tools') as HTMLButtonElement;
 const btnDrawerClose = document.getElementById('btn-drawer-close') as HTMLButtonElement;
 const tabMeasureBtn = document.getElementById('tab-measure-btn') as HTMLButtonElement;
 const tabClipBtn = document.getElementById('tab-clip-btn') as HTMLButtonElement;
 const drawerPanelMeasure = document.getElementById('drawer-panel-measure') as HTMLElement;
 const drawerPanelClip = document.getElementById('drawer-panel-clip') as HTMLElement;
 
+function animateDrawerOpen(): void {
+  sideDrawer.classList.add('open');
+  btnDockTools.classList.add('active');
+  gsap.killTweensOf(sideDrawer);
+  gsap.fromTo(
+    sideDrawer,
+    { x: 45, opacity: 0, scale: 0.98 },
+    { x: 0, opacity: 1, scale: 1, duration: 0.42, ease: 'power3.out', clearProps: 'transform,scale' }
+  );
+}
+
+function animateDrawerClose(): void {
+  if (!sideDrawer.classList.contains('open')) return;
+  btnDockTools.classList.remove('active');
+  gsap.killTweensOf(sideDrawer);
+  gsap.to(sideDrawer, {
+    x: 35,
+    opacity: 0,
+    scale: 0.98,
+    duration: 0.26,
+    ease: 'power2.in',
+    onComplete: () => {
+      sideDrawer.classList.remove('open');
+      gsap.set(sideDrawer, { clearProps: 'all' });
+    },
+  });
+}
+
 btnDockTools?.addEventListener('click', () => {
   const isOpen = sideDrawer.classList.contains('open');
-  sideDrawer.classList.toggle('open', !isOpen);
-  btnDockTools.classList.toggle('active', !isOpen);
-  allPopovers.forEach((p) => p?.classList.remove('open'));
+  if (isOpen) {
+    animateDrawerClose();
+  } else {
+    animateDrawerOpen();
+    closeAllPopovers();
+  }
 });
 
 btnDrawerClose?.addEventListener('click', () => {
-  sideDrawer.classList.remove('open');
-  btnDockTools.classList.remove('active');
+  animateDrawerClose();
+});
+
+// Subtle liquid micro-bounce interaction on clicking buttons
+document.querySelectorAll<HTMLButtonElement>('.dock-btn, .btn').forEach((btn) => {
+  btn.addEventListener('pointerdown', () => {
+    gsap.to(btn, { scale: 0.94, duration: 0.12, ease: 'power1.out' });
+  });
+  btn.addEventListener('pointerup', () => {
+    gsap.to(btn, { scale: 1, duration: 0.32, ease: 'back.out(2)' });
+  });
+  btn.addEventListener('pointerleave', () => {
+    gsap.to(btn, { scale: 1, duration: 0.22, ease: 'power2.out' });
+  });
 });
 
 tabMeasureBtn?.addEventListener('click', () => {
