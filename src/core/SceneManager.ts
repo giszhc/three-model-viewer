@@ -98,11 +98,13 @@ export class SceneManager {
 
     // 7. Lighting System
     this.lightsGroup = new THREE.Group();
+    this.lightsGroup.name = 'gmv-lights-group';
     this.initLights();
     this.scene.add(this.lightsGroup);
 
     // 8. Grid Helper
     this.gridHelper = new THREE.GridHelper(50, 50, 0x4a5568, 0x2d3748);
+    this.gridHelper.name = 'gmv-grid-helper';
     this.gridHelper.position.y = 0;
     this.gridHelper.visible = false;
     this.scene.add(this.gridHelper);

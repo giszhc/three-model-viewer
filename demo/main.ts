@@ -15,11 +15,17 @@ const statVerts = document.getElementById('stat-verts') as HTMLElement;
 const statFaces = document.getElementById('stat-faces') as HTMLElement;
 const statDims = document.getElementById('stat-dims') as HTMLElement;
 const toolTip = document.getElementById('tool-tip') as HTMLElement;
+const brandModelName = document.getElementById('brand-model-name') as HTMLElement;
+const dockBar = document.getElementById('dock-bar') as HTMLElement;
+const hudBadge = document.getElementById('hud-badge') as HTMLElement;
+const exportMenuWrapper = document.getElementById('export-menu-wrapper') as HTMLElement;
+const btnToggleBbox = document.getElementById('btn-toggle-bbox') as HTMLButtonElement;
 
 // Central Upload Zone Elements
 const uploadZone = document.getElementById('upload-zone') as HTMLElement;
 const zoneFileInput = document.getElementById('zone-file-input') as HTMLInputElement;
 const btnBrowseZone = document.getElementById('btn-browse-zone') as HTMLButtonElement;
+const btnLoadSample = document.getElementById('btn-load-sample') as HTMLButtonElement;
 const btnUnloadModel = document.getElementById('btn-unload-model') as HTMLButtonElement;
 
 // Modern Glassmorphism Loading Modal Elements
@@ -45,6 +51,48 @@ function updateStats(result: ModelLoadResult): void {
   statDims.textContent = `${result.size.x.toFixed(2)}m × ${result.size.y.toFixed(2)}m × ${result.size.z.toFixed(2)}m`;
 }
 
+/**
+ * Centrally toggle UI presence: hide all tools, bounding box controls, dock, stats, and drawer when no model is loaded.
+ */
+function updateModelPresenceUI(hasModel: boolean, modelName?: string): void {
+  if (hasModel) {
+    dockBar?.classList.remove('hidden');
+    hudBadge?.classList.remove('hidden');
+    exportMenuWrapper?.classList.remove('hidden');
+    if (btnUnloadModel) btnUnloadModel.style.display = 'inline-flex';
+    if (brandModelName) {
+      brandModelName.style.display = 'inline-block';
+      if (modelName) brandModelName.textContent = modelName;
+    }
+    uploadZone?.classList.add('hidden');
+  } else {
+    dockBar?.classList.add('hidden');
+    hudBadge?.classList.add('hidden');
+    exportMenuWrapper?.classList.add('hidden');
+    if (btnUnloadModel) btnUnloadModel.style.display = 'none';
+    if (brandModelName) {
+      brandModelName.style.display = 'none';
+      brandModelName.textContent = '';
+    }
+    uploadZone?.classList.remove('hidden');
+
+    // Close side drawer & active popovers
+    const sideDrawer = document.getElementById('side-drawer');
+    const btnDockTools = document.getElementById('btn-dock-tools');
+    sideDrawer?.classList.remove('open');
+    btnDockTools?.classList.remove('active');
+
+    const popovers = document.querySelectorAll('.popover-menu');
+    popovers.forEach((p) => p.classList.remove('open'));
+
+    // Reset stats & tools
+    statVerts.textContent = '-';
+    statFaces.textContent = '-';
+    statDims.textContent = '-';
+    btnToggleBbox?.classList.remove('active');
+  }
+}
+
 // Loading Progress Events
 viewer.on('load:start', (source) => {
   loadingOverlay.classList.add('active');
@@ -53,6 +101,7 @@ viewer.on('load:start', (source) => {
   loadingStatus.textContent = '准备解析资源数据...';
   loadingBar.style.width = '8%';
   loadingPercent.textContent = '8%';
+  if (brandModelName) brandModelName.textContent = name;
 });
 
 viewer.on('load:progress', (percent, message) => {
@@ -66,8 +115,9 @@ viewer.on('load:success', (res) => {
   loadingPercent.textContent = '100%';
   loadingStatus.textContent = '加载成功！';
   updateStats(res);
-  uploadZone?.classList.add('hidden');
-  if (btnUnloadModel) btnUnloadModel.style.display = 'inline-flex';
+  const currentName = brandModelName?.textContent || '三维模型';
+  updateModelPresenceUI(true, currentName);
+  btnToggleBbox?.classList.toggle('active', viewer.getBoundingBoxVisible());
   setTimeout(() => {
     loadingOverlay.classList.remove('active');
   }, 400);
@@ -78,10 +128,17 @@ viewer.on('load:error', (err) => {
   setTimeout(() => {
     loadingOverlay.classList.remove('active');
   }, 3500);
+  if (!viewer.currentModelInfo) {
+    updateModelPresenceUI(false);
+  }
 });
 
+// Initial presence state: Ensure all tools & box controls are hidden if no model is loaded
 if (viewer.currentModelInfo) {
   updateStats(viewer.currentModelInfo);
+  updateModelPresenceUI(true);
+} else {
+  updateModelPresenceUI(false);
 }
 
 // ==========================================
@@ -92,9 +149,18 @@ btnBrowseZone?.addEventListener('click', (e) => {
   zoneFileInput?.click();
 });
 
+btnLoadSample?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (brandModelName) brandModelName.textContent = '工业装配体 (示例)';
+  showTip('🚀 正在初始化工业示例模型...');
+  viewer.loadSampleGeometry('mechanical');
+  showTip('✅ 示例模型载入完成，已就绪！');
+  setTimeout(hideTip, 2500);
+});
+
 uploadZone?.addEventListener('click', (e) => {
   const target = e.target as HTMLElement;
-  if (target.classList.contains('hint-link')) return;
+  if (target.classList.contains('hint-link') || target.closest('#btn-load-sample')) return;
   zoneFileInput?.click();
 });
 
@@ -134,19 +200,15 @@ uploadZone?.addEventListener('drop', async (e) => {
 // Unload Model Button
 btnUnloadModel?.addEventListener('click', () => {
   viewer.clearModel();
-  uploadZone?.classList.remove('hidden');
-  if (btnUnloadModel) btnUnloadModel.style.display = 'none';
-  statVerts.textContent = '-';
-  statFaces.textContent = '-';
-  statDims.textContent = '-';
   viewer.setSectioningEnabled(false);
   updateSectioningUI();
+  updateModelPresenceUI(false);
   showTip('已卸载模型，请上传或选择新模型');
   setTimeout(hideTip, 2500);
 });
 
 // ==========================================
-// File Input & Drag and Drop (ZIP / OBJ / MTL)
+// File Input & Drag and Drop (ZIP / OBJ)
 // ==========================================
 async function handleLoadedFiles(fileList: FileList | File[]): Promise<void> {
   const files = Array.from(fileList);
@@ -158,11 +220,13 @@ async function handleLoadedFiles(fileList: FileList | File[]): Promise<void> {
 
   try {
     if (zipFile) {
+      if (brandModelName) brandModelName.textContent = zipFile.name;
       showTip(`正在解压并加载 ${zipFile.name}...`);
       await viewer.loadZip(zipFile);
       showTip(`✅ 成功加载 ZIP 模型: ${zipFile.name}`);
     } else if (objFile) {
-      showTip(`正在加载 ${objFile.name}${mtlFile ? ` 及材质 ${mtlFile.name}` : ''}...`);
+      if (brandModelName) brandModelName.textContent = objFile.name;
+      showTip(`正在加载 ${objFile.name}...`);
       const objUrl = URL.createObjectURL(objFile);
       const mtlUrl = mtlFile ? URL.createObjectURL(mtlFile) : undefined;
       await viewer.loadOBJ(objUrl, mtlUrl);
@@ -211,6 +275,127 @@ window.addEventListener('drop', async (e) => {
 });
 
 // ==========================================
+// Theme Switcher (Dark / Light Skin)
+// ==========================================
+const btnToggleTheme = document.getElementById('btn-toggle-theme') as HTMLButtonElement;
+const themeIconSun = document.getElementById('theme-icon-sun') as HTMLElement;
+const themeIconMoon = document.getElementById('theme-icon-moon') as HTMLElement;
+
+let currentTheme: 'dark' | 'light' = 'dark';
+
+btnToggleTheme?.addEventListener('click', () => {
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', currentTheme);
+
+  if (currentTheme === 'light') {
+    themeIconSun.style.display = 'block';
+    themeIconMoon.style.display = 'none';
+    viewer.setBackground('#f1f5f9');
+    showTip('☀️ 已切换为极简亮色主题');
+  } else {
+    themeIconSun.style.display = 'none';
+    themeIconMoon.style.display = 'block';
+    viewer.setBackground('#181c24');
+    showTip('🌙 已切换为深邃暗色主题');
+  }
+  setTimeout(hideTip, 2000);
+});
+
+// ==========================================
+// Fullscreen Toggle
+// ==========================================
+document.getElementById('btn-toggle-fullscreen')?.addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen().catch(() => {});
+  }
+});
+
+// ==========================================
+// Popover Menus Manager (Dock & Top Menus)
+// ==========================================
+const popoverViews = document.getElementById('popover-views') as HTMLElement;
+const popoverAutorotate = document.getElementById('popover-autorotate') as HTMLElement;
+const popoverAppearance = document.getElementById('popover-appearance') as HTMLElement;
+const popoverExport = document.getElementById('popover-export') as HTMLElement;
+
+const allPopovers = [popoverViews, popoverAutorotate, popoverAppearance, popoverExport];
+
+function togglePopover(targetPopover: HTMLElement): void {
+  const isOpen = targetPopover.classList.contains('open');
+  allPopovers.forEach((p) => p?.classList.remove('open'));
+  if (!isOpen) {
+    targetPopover.classList.add('open');
+  }
+}
+
+document.getElementById('btn-dock-views')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  togglePopover(popoverViews);
+});
+
+document.getElementById('btn-dock-autorotate')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  togglePopover(popoverAutorotate);
+});
+
+document.getElementById('btn-dock-appearance')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  togglePopover(popoverAppearance);
+});
+
+document.getElementById('btn-export-menu-toggle')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  togglePopover(popoverExport);
+});
+
+// Close popovers on clicking outside
+document.addEventListener('click', (e) => {
+  const target = e.target as HTMLElement;
+  if (!target.closest('.popover-menu') && !target.closest('.dock-btn') && !target.closest('#btn-export-menu-toggle')) {
+    allPopovers.forEach((p) => p?.classList.remove('open'));
+  }
+});
+
+// ==========================================
+// Side Drawer (Toolbox: Measure & Sectioning)
+// ==========================================
+const sideDrawer = document.getElementById('side-drawer') as HTMLElement;
+const btnDockTools = document.getElementById('btn-dock-tools') as HTMLButtonElement;
+const btnDrawerClose = document.getElementById('btn-drawer-close') as HTMLButtonElement;
+const tabMeasureBtn = document.getElementById('tab-measure-btn') as HTMLButtonElement;
+const tabClipBtn = document.getElementById('tab-clip-btn') as HTMLButtonElement;
+const drawerPanelMeasure = document.getElementById('drawer-panel-measure') as HTMLElement;
+const drawerPanelClip = document.getElementById('drawer-panel-clip') as HTMLElement;
+
+btnDockTools?.addEventListener('click', () => {
+  const isOpen = sideDrawer.classList.contains('open');
+  sideDrawer.classList.toggle('open', !isOpen);
+  btnDockTools.classList.toggle('active', !isOpen);
+  allPopovers.forEach((p) => p?.classList.remove('open'));
+});
+
+btnDrawerClose?.addEventListener('click', () => {
+  sideDrawer.classList.remove('open');
+  btnDockTools.classList.remove('active');
+});
+
+tabMeasureBtn?.addEventListener('click', () => {
+  tabMeasureBtn.classList.add('active');
+  tabClipBtn.classList.remove('active');
+  drawerPanelMeasure.style.display = 'flex';
+  drawerPanelClip.style.display = 'none';
+});
+
+tabClipBtn?.addEventListener('click', () => {
+  tabClipBtn.classList.add('active');
+  tabMeasureBtn.classList.remove('active');
+  drawerPanelClip.style.display = 'flex';
+  drawerPanelMeasure.style.display = 'none';
+});
+
+// ==========================================
 // 8-View Switching
 // ==========================================
 const viewButtons = document.querySelectorAll<HTMLButtonElement>('[data-view]');
@@ -219,11 +404,14 @@ viewButtons.forEach((btn) => {
     const view = btn.getAttribute('data-view') as CameraView;
     if (view) {
       viewer.setView(view, 500);
+      popoverViews?.classList.remove('open');
     }
   });
 });
 document.getElementById('btn-view-fit')?.addEventListener('click', () => {
   viewer.fitView(500);
+  showTip('🎯 视角已平滑居中复位');
+  setTimeout(hideTip, 1500);
 });
 
 // ==========================================
@@ -234,6 +422,7 @@ const btnRotAxisX = document.getElementById('btn-rot-axis-x') as HTMLButtonEleme
 const btnRotAxisY = document.getElementById('btn-rot-axis-y') as HTMLButtonElement;
 const btnRotDirCw = document.getElementById('btn-rot-dir-cw') as HTMLButtonElement;
 const btnRotDirCcw = document.getElementById('btn-rot-dir-ccw') as HTMLButtonElement;
+const dockBtnAutoRotate = document.getElementById('btn-dock-autorotate') as HTMLButtonElement;
 const axisLockButtons = document.querySelectorAll<HTMLButtonElement>('#axis-lock-group button');
 
 function updateAutoRotateUI(): void {
@@ -242,9 +431,11 @@ function updateAutoRotateUI(): void {
     if (state.enabled) {
       btnToggleAutoRotate.textContent = '⏸️ 暂停旋转';
       btnToggleAutoRotate.style.background = '#e11d48';
+      dockBtnAutoRotate?.classList.add('active');
     } else {
       btnToggleAutoRotate.textContent = '▶️ 开始旋转';
-      btnToggleAutoRotate.style.background = '#0284c7';
+      btnToggleAutoRotate.style.background = 'var(--accent)';
+      dockBtnAutoRotate?.classList.remove('active');
     }
   }
 
@@ -531,42 +722,28 @@ document.getElementById('btn-clip-custom-invert')?.addEventListener('click', () 
 });
 
 // ==========================================
-// Bounding Box, Dimensions & Model Rotation
+// Bounding Box & Dimensions (L, W, H)
 // ==========================================
-const btnToggleBbox = document.getElementById('btn-toggle-bbox') as HTMLButtonElement;
 btnToggleBbox?.addEventListener('click', () => {
   const isVis = viewer.getBoundingBoxVisible();
   viewer.showBoundingBox(!isVis);
   btnToggleBbox.classList.toggle('active', !isVis);
-});
-
-document.getElementById('btn-rotate-model')?.addEventListener('click', () => {
-  // Rotate around Y and X by 15 degrees to demonstrate dynamic orientation of L/W/H
-  viewer.rotateModel(0.1, 0.2, 0.05);
-  showTip('模型已旋转，长宽高引导线与尺寸标签已自动在新的三向空间自适应显示');
-  setTimeout(hideTip, 3000);
+  showTip(!isVis ? '📦 已开启范围框及尺寸线标注' : '已隐藏范围框及尺寸线');
+  setTimeout(hideTip, 2000);
 });
 
 // ==========================================
-// Model Display Style (Solid / Wireframe / Points)
+// Model Display Style (Solid / Wireframe)
 // ==========================================
 const displayStyleButtons = document.querySelectorAll<HTMLButtonElement>('#display-style-group button');
-const pointSizeContainer = document.getElementById('point-size-container') as HTMLElement;
-const sliderPointSize = document.getElementById('slider-point-size') as HTMLInputElement;
-const pointSizeVal = document.getElementById('point-size-val') as HTMLElement;
 const currentStyleBadge = document.getElementById('current-style-badge') as HTMLElement;
 
 function updateDisplayStyleUI(style: ModelDisplayStyle): void {
   displayStyleButtons.forEach((btn) => {
     btn.classList.toggle('active', btn.getAttribute('data-style') === style);
   });
-  if (pointSizeContainer) {
-    pointSizeContainer.style.display = style === 'points' ? 'flex' : 'none';
-  }
   if (currentStyleBadge) {
-    if (style === 'solid') currentStyleBadge.textContent = '实体表面';
-    else if (style === 'wireframe') currentStyleBadge.textContent = '网格线框';
-    else currentStyleBadge.textContent = '离散点云';
+    currentStyleBadge.textContent = style === 'wireframe' ? '网格' : '实体';
   }
 }
 
@@ -581,19 +758,9 @@ displayStyleButtons.forEach((btn) => {
       showTip('🧊 已切换为实体表面显示');
     } else if (style === 'wireframe') {
       showTip('🕸️ 已切换为网格线框显示');
-    } else if (style === 'points') {
-      showTip('✨ 已切换为离散点云显示（可调节下方点大小）');
     }
     setTimeout(hideTip, 2200);
   });
-});
-
-sliderPointSize?.addEventListener('input', () => {
-  const size = parseFloat(sliderPointSize.value);
-  if (!isNaN(size)) {
-    viewer.setPointSize(size);
-    if (pointSizeVal) pointSizeVal.textContent = `${size.toFixed(1)} px`;
-  }
 });
 
 viewer.on('style:change', (style) => {
@@ -608,6 +775,8 @@ btnToggleTexture?.addEventListener('click', () => {
   const current = viewer.getTextureState();
   viewer.toggleTexture(!current);
   btnToggleTexture.classList.toggle('active', !current);
+  showTip(!current ? '🎨 已开启原始纹理贴图' : '🟦 已关闭纹理（显示数模蓝）');
+  setTimeout(hideTip, 2200);
 });
 
 const btnToggleGrid = document.getElementById('btn-toggle-grid') as HTMLButtonElement;
@@ -616,6 +785,8 @@ btnToggleGrid?.addEventListener('click', () => {
   gridVis = !gridVis;
   viewer.setGridVisible(gridVis);
   btnToggleGrid.classList.toggle('active', gridVis);
+  showTip(gridVis ? '🏁 已开启地面参考网格' : '已隐藏地面参考网格');
+  setTimeout(hideTip, 1800);
 });
 
 const bgButtons = document.querySelectorAll<HTMLButtonElement>('[data-bg]');
@@ -635,14 +806,29 @@ bgButtons.forEach((btn) => {
 // ==========================================
 // High-Resolution Screenshot Export
 // ==========================================
+document.getElementById('btn-export-original')?.addEventListener('click', async () => {
+  popoverExport?.classList.remove('open');
+  const texSize = viewer.getModelTextureSize();
+  if (texSize && texSize.width > 0 && texSize.height > 0) {
+    showTip(`📸 正在按模型实际贴图尺寸 (${texSize.width}×${texSize.height}) 渲染原画质截图...`);
+  } else {
+    showTip('📸 正在生成原画质无损截图...');
+  }
+  await viewer.exportImage({ originalQuality: true, download: true });
+  showTip('✅ 原画质无损截图下载已触发');
+  setTimeout(hideTip, 2500);
+});
+
 document.getElementById('btn-export-1x')?.addEventListener('click', async () => {
-  showTip('📸 正在生成 1x 截图...');
+  popoverExport?.classList.remove('open');
+  showTip('📸 正在生成 1x 标清截图...');
   await viewer.exportImage({ scale: 1, download: true, filename: 'model-1x.png' });
   showTip('✅ 1x 标清截图下载已触发');
   setTimeout(hideTip, 2500);
 });
 
 document.getElementById('btn-export-2x')?.addEventListener('click', async () => {
+  popoverExport?.classList.remove('open');
   showTip('📸 正在生成 2x 高清 (2K) 截图...');
   await viewer.exportImage({ scale: 2, download: true, filename: 'model-2k-hd.png' });
   showTip('✅ 2x 高清截图下载已触发');
@@ -650,6 +836,7 @@ document.getElementById('btn-export-2x')?.addEventListener('click', async () => 
 });
 
 document.getElementById('btn-export-4x')?.addEventListener('click', async () => {
+  popoverExport?.classList.remove('open');
   showTip('🖼️ 正在生成 4x 超清 (4K) 截图...');
   await viewer.exportImage({ scale: 4, download: true, filename: 'model-4k-uhd.png' });
   showTip('✅ 4x 超清截图下载已触发');

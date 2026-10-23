@@ -14,8 +14,6 @@ export interface ManagedMeshMaterial {
   mesh: THREE.Mesh;
   originalMaterial: THREE.Material | THREE.Material[];
   plainMaterial: THREE.Material;
-  points?: THREE.Points;
-  pointsMaterial?: THREE.PointsMaterial;
 }
 
 export class ModelLoader {
@@ -23,8 +21,7 @@ export class ModelLoader {
   private managedMaterials: ManagedMeshMaterial[] = [];
   private isTextureEnabled: boolean = true;
   private displayStyle: ModelDisplayStyle = 'solid';
-  private pointSize: number = 2.5;
-  private pointColor: number = 0x38bdf8;
+  private plainColor: number = 0x4c8cd6; // Digital3DCloud / 先临三维标准数模扫描蓝
   private currentClippingPlanes: THREE.Plane[] = [];
 
   /**
@@ -165,9 +162,9 @@ export class ModelLoader {
           }
         } else {
           mesh.material = new THREE.MeshStandardMaterial({
-            color: 0xb0b8c4,
-            roughness: 0.5,
-            metalness: 0.1,
+            color: this.plainColor,
+            roughness: 0.45,
+            metalness: 0.12,
             side: THREE.DoubleSide,
           });
         }
@@ -197,42 +194,20 @@ export class ModelLoader {
             faceCount += geom.attributes.position.count / 3;
           }
 
-          // Create a clean clay material for texture toggling
+          // Create Digital3DCloud standard CAD/scan blue material for texture toggling
           const plainMat = new THREE.MeshStandardMaterial({
-            color: 0xcccccc,
-            roughness: 0.6,
-            metalness: 0.1,
+            color: this.plainColor,
+            roughness: 0.45,
+            metalness: 0.12,
             side: THREE.DoubleSide,
+            clippingPlanes: this.currentClippingPlanes.length > 0 ? this.currentClippingPlanes : null,
+            clipShadows: true,
           });
-
-          // Create corresponding Points for point-cloud display style
-          const hasVertexColors = !!geom.attributes.color;
-          const pointsMat = new THREE.PointsMaterial({
-            color: hasVertexColors ? 0xffffff : this.pointColor,
-            size: this.pointSize,
-            sizeAttenuation: true,
-            transparent: true,
-            opacity: 0.9,
-            vertexColors: hasVertexColors,
-          });
-
-          if (this.currentClippingPlanes.length > 0) {
-            pointsMat.clippingPlanes = this.currentClippingPlanes;
-            pointsMat.clipShadows = true;
-          }
-
-          const points = new THREE.Points(geom, pointsMat);
-          points.visible = this.displayStyle === 'points';
-          points.castShadow = false;
-          points.receiveShadow = false;
-          mesh.add(points);
 
           const managedItem: ManagedMeshMaterial = {
             mesh,
             originalMaterial: mesh.material,
             plainMaterial: plainMat,
-            points,
-            pointsMaterial: pointsMat,
           };
 
           this.applyStyleToItem(managedItem);
@@ -260,22 +235,16 @@ export class ModelLoader {
   }
 
   /**
-   * Internal helper to apply display style (solid/wireframe/points) to a managed mesh
+   * Internal helper to apply display style (solid/wireframe) to a managed mesh
    */
   private applyStyleToItem(item: ManagedMeshMaterial): void {
     const curMat = this.isTextureEnabled ? item.originalMaterial : item.plainMaterial;
     item.mesh.material = curMat;
 
     const setMatProps = (mat: THREE.Material) => {
-      if (this.displayStyle === 'solid') {
-        mat.visible = true;
-        if ('wireframe' in mat) (mat as THREE.MeshStandardMaterial).wireframe = false;
-      } else if (this.displayStyle === 'wireframe') {
-        mat.visible = true;
-        if ('wireframe' in mat) (mat as THREE.MeshStandardMaterial).wireframe = true;
-      } else if (this.displayStyle === 'points') {
-        // Hide surface rendering while keeping mesh.visible = true so BVH & snapping remain active
-        mat.visible = false;
+      mat.visible = true;
+      if ('wireframe' in mat) {
+        (mat as THREE.MeshStandardMaterial).wireframe = (this.displayStyle === 'wireframe');
       }
       mat.needsUpdate = true;
     };
@@ -285,17 +254,10 @@ export class ModelLoader {
     } else {
       setMatProps(curMat);
     }
-
-    if (item.points) {
-      item.points.visible = this.displayStyle === 'points';
-      if (item.pointsMaterial) {
-        item.pointsMaterial.visible = this.displayStyle === 'points';
-      }
-    }
   }
 
   /**
-   * Set model display style: 'solid' (实体), 'wireframe' (线框), 'points' (点云)
+   * Set model display style: 'solid' (实体), 'wireframe' (线框)
    */
   public setDisplayStyle(style: ModelDisplayStyle): void {
     this.displayStyle = style;
@@ -306,36 +268,6 @@ export class ModelLoader {
 
   public getDisplayStyle(): ModelDisplayStyle {
     return this.displayStyle;
-  }
-
-  /**
-   * Adjust point size for point-cloud display style
-   */
-  public setPointSize(size: number): void {
-    this.pointSize = Math.max(0.1, size);
-    for (const item of this.managedMaterials) {
-      if (item.pointsMaterial) {
-        item.pointsMaterial.size = this.pointSize;
-        item.pointsMaterial.needsUpdate = true;
-      }
-    }
-  }
-
-  public getPointSize(): number {
-    return this.pointSize;
-  }
-
-  /**
-   * Adjust point color for point-cloud display style
-   */
-  public setPointColor(color: THREE.ColorRepresentation): void {
-    this.pointColor = typeof color === 'string' ? new THREE.Color(color).getHex() : Number(color);
-    for (const item of this.managedMaterials) {
-      if (item.pointsMaterial && !item.pointsMaterial.vertexColors) {
-        item.pointsMaterial.color.set(this.pointColor);
-        item.pointsMaterial.needsUpdate = true;
-      }
-    }
   }
 
   /**
@@ -353,6 +285,63 @@ export class ModelLoader {
   }
 
   /**
+   * Set color for non-texture display (defaults to Digital3DCloud standard CAD blue 0x4c8cd6)
+   */
+  public setPlainColor(color: THREE.ColorRepresentation): void {
+    this.plainColor = typeof color === 'string' ? new THREE.Color(color).getHex() : Number(color);
+    for (const item of this.managedMaterials) {
+      if (item.plainMaterial && 'color' in item.plainMaterial) {
+        (item.plainMaterial as THREE.MeshStandardMaterial).color.set(this.plainColor);
+        item.plainMaterial.needsUpdate = true;
+      }
+    }
+  }
+
+  public getPlainColor(): number {
+    return this.plainColor;
+  }
+
+  /**
+   * Retrieves the maximum original texture resolution (width & height) from the model's materials
+   */
+  public getModelTextureSize(): { width: number; height: number } | null {
+    let maxWidth = 0;
+    let maxHeight = 0;
+
+    const inspectMat = (mat: THREE.Material) => {
+      if ('map' in mat && (mat as THREE.MeshStandardMaterial).map) {
+        const tex = (mat as THREE.MeshStandardMaterial).map;
+        if (tex) {
+          const img = (tex.image || (tex.source as unknown as { data?: { width?: number; height?: number } })?.data) as
+            | { width?: number; height?: number }
+            | undefined;
+          if (img) {
+            const w = img.width || 0;
+            const h = img.height || 0;
+            if (w > 0 && h > 0 && w * h > maxWidth * maxHeight) {
+              maxWidth = w;
+              maxHeight = h;
+            }
+          }
+        }
+      }
+    };
+
+    for (const item of this.managedMaterials) {
+      if (Array.isArray(item.originalMaterial)) {
+        item.originalMaterial.forEach(inspectMat);
+      } else if (item.originalMaterial) {
+        inspectMat(item.originalMaterial);
+      }
+    }
+
+    if (maxWidth > 0 && maxHeight > 0) {
+      return { width: maxWidth, height: maxHeight };
+    }
+    return null;
+  }
+
+  /**
    * Retrieve all meshes of the model for raycasting and snapping
    */
   public getMeshes(): THREE.Mesh[] {
@@ -360,7 +349,7 @@ export class ModelLoader {
   }
 
   /**
-   * Apply clipping planes to all materials (surface and point cloud)
+   * Apply clipping planes to all materials
    */
   public applyClippingPlanes(planes: THREE.Plane[]): void {
     this.currentClippingPlanes = planes;
@@ -377,10 +366,6 @@ export class ModelLoader {
         applyToMat(item.originalMaterial);
       }
       applyToMat(item.plainMaterial);
-
-      if (item.pointsMaterial) {
-        applyToMat(item.pointsMaterial);
-      }
     }
   }
 
@@ -396,12 +381,6 @@ export class ModelLoader {
     for (const item of this.managedMaterials) {
       if (item.plainMaterial) {
         item.plainMaterial.dispose();
-      }
-      if (item.pointsMaterial) {
-        item.pointsMaterial.dispose();
-      }
-      if (item.points) {
-        item.mesh.remove(item.points);
       }
       if (item.mesh.geometry && item.mesh.geometry.disposeBoundsTree) {
         item.mesh.geometry.disposeBoundsTree();

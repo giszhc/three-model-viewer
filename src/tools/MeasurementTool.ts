@@ -26,6 +26,8 @@ export class MeasurementTool {
   // Active interaction points for point-to-point tools
   private activePoints: THREE.Vector3[] = [];
   private activePreviewGroup: THREE.Group;
+  private activeMarkersGroup: THREE.Group;
+  private activeLineGroup: THREE.Group;
   private snapCursorMesh: THREE.Mesh;
 
   // Event handlers
@@ -56,8 +58,16 @@ export class MeasurementTool {
     this.activePreviewGroup.name = 'gmv-measure-preview-group';
     this.scene.add(this.activePreviewGroup);
 
-    // Glowing Snapping Cursor
-    const snapGeom = new THREE.SphereGeometry(0.08, 16, 16);
+    this.activeMarkersGroup = new THREE.Group();
+    this.activeMarkersGroup.name = 'gmv-active-markers-group';
+    this.activePreviewGroup.add(this.activeMarkersGroup);
+
+    this.activeLineGroup = new THREE.Group();
+    this.activeLineGroup.name = 'gmv-active-line-group';
+    this.activePreviewGroup.add(this.activeLineGroup);
+
+    // Glowing Snapping Cursor (Screen-space fixed size: never scales with model)
+    const snapGeom = new THREE.SphereGeometry(1, 16, 16);
     const snapMat = new THREE.MeshBasicMaterial({
       color: 0x38bdf8,
       transparent: true,
@@ -65,6 +75,7 @@ export class MeasurementTool {
       depthTest: false,
     });
     this.snapCursorMesh = new THREE.Mesh(snapGeom, snapMat);
+    this.snapCursorMesh.userData = { fixedScreenRadius: 5.5 };
     this.snapCursorMesh.visible = false;
     this.scene.add(this.snapCursorMesh);
 
@@ -100,6 +111,10 @@ export class MeasurementTool {
 
   public getMode(): MeasurementType {
     return this.currentMode;
+  }
+
+  public getControls(): OrbitControls | TrackballControls | null {
+    return this.controls;
   }
 
   private addListeners(): void {
@@ -146,11 +161,12 @@ export class MeasurementTool {
 
     if (snap.isVertexSnapped) {
       (this.snapCursorMesh.material as THREE.MeshBasicMaterial).color.setHex(0xf43f5e);
-      this.snapCursorMesh.scale.setScalar(1.4);
+      this.snapCursorMesh.userData.fixedScreenRadius = 7.5;
     } else {
       (this.snapCursorMesh.material as THREE.MeshBasicMaterial).color.setHex(0x38bdf8);
-      this.snapCursorMesh.scale.setScalar(1.0);
+      this.snapCursorMesh.userData.fixedScreenRadius = 5.5;
     }
+    this.updateSingleMeshScale(this.snapCursorMesh);
 
     // Dynamic Line Preview while moving mouse
     if (this.activePoints.length > 0) {
@@ -184,6 +200,7 @@ export class MeasurementTool {
 
     const clickedPoint = snap.point.clone();
     this.activePoints.push(clickedPoint);
+    this.addActiveMarker(clickedPoint);
     this.emitter.emit('measure:change', [...this.activePoints]);
 
     // Check completion criteria for single-shot measurements
@@ -194,6 +211,16 @@ export class MeasurementTool {
     } else if (this.currentMode === 'angle' && this.activePoints.length === 3) {
       this.finishAngleMeasurement();
     }
+  }
+
+  private addActiveMarker(pos: THREE.Vector3): void {
+    const geom = new THREE.SphereGeometry(1, 16, 16);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, depthTest: false });
+    const sphere = new THREE.Mesh(geom, mat);
+    sphere.position.copy(pos);
+    sphere.userData = { fixedScreenRadius: 5.5 };
+    this.activeMarkersGroup.add(sphere);
+    this.updateSingleMeshScale(sphere);
   }
 
   private handleDoubleClick(_e: MouseEvent): void {
@@ -207,7 +234,7 @@ export class MeasurementTool {
   // ==========================================
 
   private updateDynamicPreview(currentPoint: THREE.Vector3): void {
-    this.clearActivePreview();
+    this.clearActiveLine();
 
     const points = [...this.activePoints, currentPoint];
     if (points.length < 2) return;
@@ -221,7 +248,7 @@ export class MeasurementTool {
     });
     const line = new THREE.Line(geom, mat);
     line.computeLineDistances();
-    this.activePreviewGroup.add(line);
+    this.activeLineGroup.add(line);
   }
 
   // ==========================================
@@ -303,7 +330,7 @@ export class MeasurementTool {
 
     this.addEndSphere(group, p1, 0x10b981);
     this.addEndSphere(group, p2, 0xef4444);
-    this.addEndSphere(group, corner, 0xfacc15, 0.04);
+    this.addEndSphere(group, corner, 0xfacc15, 4.0);
 
     // Height badge
     const vMid = new THREE.Vector3().addVectors(corner, p2).multiplyScalar(0.5);
@@ -414,7 +441,7 @@ export class MeasurementTool {
 
     this.addEndSphere(group, p1, 0xf59e0b);
     this.addEndSphere(group, p2, 0xf59e0b);
-    this.addEndSphere(group, vertex, 0xef4444, 0.08);
+    this.addEndSphere(group, vertex, 0xef4444, 6.5);
 
     // Small Arc indication
     const arcRadius = Math.min(p1.distanceTo(vertex), p2.distanceTo(vertex)) * 0.35 || 0.4;
@@ -460,32 +487,93 @@ export class MeasurementTool {
     this.setMode('none'); // Single-shot: automatically exit mode
   }
 
-  private addEndSphere(group: THREE.Group, pos: THREE.Vector3, color: number, scale: number = 0.06): void {
-    const geom = new THREE.SphereGeometry(scale, 16, 16);
+  private addEndSphere(group: THREE.Group, pos: THREE.Vector3, color: number, pixelRadius: number = 5.5): void {
+    const geom = new THREE.SphereGeometry(1, 16, 16);
     const mat = new THREE.MeshBasicMaterial({ color, depthTest: false });
     const sphere = new THREE.Mesh(geom, mat);
     sphere.position.copy(pos);
+    sphere.userData = { fixedScreenRadius: pixelRadius };
     group.add(sphere);
+    this.updateSingleMeshScale(sphere);
   }
 
   public undoLastPoint(): void {
     if (this.activePoints.length > 0) {
       this.activePoints.pop();
-      this.clearActivePreview();
+      if (this.activeMarkersGroup.children.length > 0) {
+        const lastMarker = this.activeMarkersGroup.children[this.activeMarkersGroup.children.length - 1];
+        this.disposeObjectHierarchy(lastMarker);
+        this.activeMarkersGroup.remove(lastMarker);
+      }
+      this.clearActiveLine();
       this.emitter.emit('measure:change', [...this.activePoints]);
     }
   }
 
   public cancelActive(): void {
     this.activePoints = [];
-    this.clearActivePreview();
+    this.clearActiveLine();
+    this.clearActiveMarkers();
   }
 
-  private clearActivePreview(): void {
-    while (this.activePreviewGroup.children.length > 0) {
-      const obj = this.activePreviewGroup.children[0];
+  private clearActiveLine(): void {
+    while (this.activeLineGroup.children.length > 0) {
+      const obj = this.activeLineGroup.children[0];
       this.disposeObjectHierarchy(obj);
-      this.activePreviewGroup.remove(obj);
+      this.activeLineGroup.remove(obj);
+    }
+  }
+
+  private clearActiveMarkers(): void {
+    while (this.activeMarkersGroup.children.length > 0) {
+      const obj = this.activeMarkersGroup.children[0];
+      this.disposeObjectHierarchy(obj);
+      this.activeMarkersGroup.remove(obj);
+    }
+  }
+
+  /**
+   * Updates scale of all marker spheres dynamically per frame so they maintain
+   * a constant screen pixel size, completely independent of camera distance or model zoom!
+   */
+  public updatePerFrame(viewportHeight?: number): void {
+    const h = viewportHeight || this.container.clientHeight || window.innerHeight || 800;
+    const vFovRad = (this.camera.fov * Math.PI) / 180;
+    const camPos = this.camera.position;
+    const tanHalfFov = Math.tan(vFovRad / 2);
+
+    const updateMesh = (obj: THREE.Object3D) => {
+      if (obj.userData && typeof obj.userData.fixedScreenRadius === 'number') {
+        const radiusPx = obj.userData.fixedScreenRadius;
+        const worldPos = new THREE.Vector3();
+        obj.getWorldPosition(worldPos);
+        const dist = worldPos.distanceTo(camPos);
+        const worldRadius = (2 * dist * tanHalfFov * radiusPx) / Math.max(h, 1);
+        obj.scale.setScalar(worldRadius);
+      }
+    };
+
+    if (this.snapCursorMesh && this.snapCursorMesh.visible) {
+      updateMesh(this.snapCursorMesh);
+    }
+
+    this.activeMarkersGroup.traverse(updateMesh);
+    this.measurementGroup.traverse(updateMesh);
+  }
+
+  private updateSingleMeshScale(obj: THREE.Object3D, viewportHeight?: number): void {
+    if (obj.userData && typeof obj.userData.fixedScreenRadius === 'number') {
+      const radiusPx = obj.userData.fixedScreenRadius;
+      const h = viewportHeight || this.container.clientHeight || window.innerHeight || 800;
+      const vFovRad = (this.camera.fov * Math.PI) / 180;
+      const camPos = this.camera.position;
+      const tanHalfFov = Math.tan(vFovRad / 2);
+
+      const worldPos = new THREE.Vector3();
+      obj.getWorldPosition(worldPos);
+      const dist = worldPos.distanceTo(camPos);
+      const worldRadius = (2 * dist * tanHalfFov * radiusPx) / Math.max(h, 1);
+      obj.scale.setScalar(worldRadius);
     }
   }
 

@@ -143,7 +143,7 @@ export class BoundingBoxTool {
     this.labelZ = new CSS2DObject(divZ);
     this.boxGroup.add(this.labelZ);
 
-    this.setVisible(options?.visible ?? true);
+    this.setVisible(options?.visible ?? false);
   }
 
   private createDynamicLine(color: number): THREE.Line {

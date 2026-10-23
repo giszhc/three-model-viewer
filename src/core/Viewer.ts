@@ -36,11 +36,13 @@ export class Viewer extends EventEmitter {
   public currentModel: THREE.Group | null = null;
   public currentModelInfo: ModelLoadResult | null = null;
   private unit: string = 'm';
+  private defaultShowBoundingBox: boolean = false;
 
   constructor(options: ViewerOptions) {
     super();
 
     this.unit = options.unit || 'm';
+    this.defaultShowBoundingBox = options.showBoundingBox ?? false;
 
     // 1. Core Scene Manager
     this.sceneManager = new SceneManager(options);
@@ -76,16 +78,19 @@ export class Viewer extends EventEmitter {
     this.screenshotTool = new ScreenshotTool(
       this.sceneManager.renderer,
       this.sceneManager.scene,
-      this.sceneManager.camera
+      this.sceneManager.camera,
+      () => this.currentModel
     );
 
     // Forward internal measurement events
     this.measurementTool.setUnit(this.unit);
 
-    // Dynamic per-frame updates: track bounding box edges and update auto-rotation/axis lock
+    // Dynamic per-frame updates: track bounding box edges, fixed-size markers, and auto-rotation
     this.sceneManager.onBeforeRender = () => {
       this.boundingBoxTool.update(this.sceneManager.camera);
       this.cameraTool.updatePerFrame();
+      this.measurementTool.updatePerFrame();
+      this.clippingTool.updatePerFrame();
     };
   }
 
@@ -195,13 +200,14 @@ export class Viewer extends EventEmitter {
 
   private setupLoadedModel(result: ModelLoadResult): void {
     this.currentModel = result.model;
+    this.currentModel.name = 'gmv-current-model';
     this.currentModelInfo = result;
 
     this.sceneManager.scene.add(this.currentModel);
 
-    // Attach dynamic dimensional bounding box
+    // Attach dynamic dimensional bounding box (default: hidden)
     this.boundingBoxTool.attachToModel(this.currentModel, {
-      visible: true,
+      visible: this.defaultShowBoundingBox,
       unit: this.unit,
     });
 
@@ -234,7 +240,7 @@ export class Viewer extends EventEmitter {
   }
 
   /**
-   * Set model display style: 'solid' (实体), 'wireframe' (网格线框), 'points' (点云)
+   * Set model display style: 'solid' (实体), 'wireframe' (网格线框)
    */
   public setModelDisplayStyle(style: ModelDisplayStyle): void {
     this.modelLoader.setDisplayStyle(style);
@@ -245,22 +251,6 @@ export class Viewer extends EventEmitter {
     return this.modelLoader.getDisplayStyle();
   }
 
-  /**
-   * Set point size for point-cloud display style
-   */
-  public setPointSize(size: number): void {
-    this.modelLoader.setPointSize(size);
-    this.emit('pointsize:change', size);
-  }
-
-  public getPointSize(): number {
-    return this.modelLoader.getPointSize();
-  }
-
-  public setPointColor(color: THREE.ColorRepresentation): void {
-    this.modelLoader.setPointColor(color);
-  }
-
   public toggleTexture(showTexture: boolean): void {
     this.modelLoader.toggleTexture(showTexture);
     this.emit('texture:toggle', showTexture);
@@ -268,6 +258,24 @@ export class Viewer extends EventEmitter {
 
   public getTextureState(): boolean {
     return this.modelLoader.getTextureState();
+  }
+
+  /**
+   * Set color for model when texture is turned off (defaults to Digital3DCloud CAD blue 0x4c8cd6)
+   */
+  public setPlainColor(color: THREE.ColorRepresentation): void {
+    this.modelLoader.setPlainColor(color);
+  }
+
+  public getPlainColor(): number {
+    return this.modelLoader.getPlainColor();
+  }
+
+  /**
+   * Retrieves the maximum original texture resolution of the current model
+   */
+  public getModelTextureSize(): { width: number; height: number } | null {
+    return this.modelLoader.getModelTextureSize();
   }
 
   public setGridVisible(visible: boolean): void {
@@ -289,18 +297,6 @@ export class Viewer extends EventEmitter {
 
   public getBoundingBoxVisible(): boolean {
     return this.boundingBoxTool.getVisible();
-  }
-
-  /**
-   * Rotate model around X, Y, or Z (radians).
-   * Notice: The bounding box, dimension lines, and labels rotate WITH the model!
-   */
-  public rotateModel(rx: number = 0, ry: number = 0, rz: number = 0): void {
-    if (!this.currentModel) return;
-    this.currentModel.rotation.x += rx;
-    this.currentModel.rotation.y += ry;
-    this.currentModel.rotation.z += rz;
-    this.currentModel.updateMatrixWorld(true);
   }
 
   // ==========================================

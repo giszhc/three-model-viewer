@@ -1054,11 +1054,13 @@ export class ClippingTool {
   private addCustomPoint(point: THREE.Vector3): void {
     this.customPoints.push(point.clone());
 
-    const markerGeom = new THREE.SphereGeometry(this.getMarkerScale(), 16, 16);
-    const markerMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+    const markerGeom = new THREE.SphereGeometry(1, 16, 16);
+    const markerMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, depthTest: false });
     const marker = new THREE.Mesh(markerGeom, markerMat);
     marker.position.copy(point);
+    marker.userData = { fixedScreenRadius: 5.5 };
     this.customMarkersGroup.add(marker);
+    this.updateSingleMarkerScale(marker);
 
     if (this.customPoints.length === 2) {
       const p1 = this.customPoints[0];
@@ -1088,10 +1090,42 @@ export class ClippingTool {
     }
   }
 
-  private getMarkerScale(): number {
-    const size = new THREE.Vector3();
-    this.modelBox.getSize(size);
-    return Math.max(size.x, size.y, size.z) * 0.015 || 0.1;
+  /**
+   * Updates custom knife markers to maintain constant pixel size on screen
+   */
+  public updatePerFrame(viewportHeight?: number): void {
+    if (this.customMarkersGroup.children.length === 0) return;
+    const h = viewportHeight || this.container.clientHeight || window.innerHeight || 800;
+    const vFovRad = (this.camera.fov * Math.PI) / 180;
+    const camPos = this.camera.position;
+    const tanHalfFov = Math.tan(vFovRad / 2);
+
+    this.customMarkersGroup.traverse((obj) => {
+      if (obj.userData && typeof obj.userData.fixedScreenRadius === 'number') {
+        const radiusPx = obj.userData.fixedScreenRadius;
+        const worldPos = new THREE.Vector3();
+        obj.getWorldPosition(worldPos);
+        const dist = worldPos.distanceTo(camPos);
+        const worldRadius = (2 * dist * tanHalfFov * radiusPx) / Math.max(h, 1);
+        obj.scale.setScalar(worldRadius);
+      }
+    });
+  }
+
+  private updateSingleMarkerScale(obj: THREE.Object3D, viewportHeight?: number): void {
+    if (obj.userData && typeof obj.userData.fixedScreenRadius === 'number') {
+      const radiusPx = obj.userData.fixedScreenRadius;
+      const h = viewportHeight || this.container.clientHeight || window.innerHeight || 800;
+      const vFovRad = (this.camera.fov * Math.PI) / 180;
+      const camPos = this.camera.position;
+      const tanHalfFov = Math.tan(vFovRad / 2);
+
+      const worldPos = new THREE.Vector3();
+      obj.getWorldPosition(worldPos);
+      const dist = worldPos.distanceTo(camPos);
+      const worldRadius = (2 * dist * tanHalfFov * radiusPx) / Math.max(h, 1);
+      obj.scale.setScalar(worldRadius);
+    }
   }
 
   private clearCustomMarkers(): void {

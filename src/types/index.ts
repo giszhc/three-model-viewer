@@ -33,7 +33,7 @@ export interface ViewerOptions {
   cameraFov?: number;
   cameraNear?: number;
   cameraFar?: number;
-  showBoundingBox?: boolean;
+  showBoundingBox?: boolean; // default: false (默认隐藏范围框及尺寸线)
   unit?: string; // e.g. 'm', 'mm', 'cm'
   controlsType?: 'trackball' | 'orbit'; // default: 'trackball' for infinite 360° unconstrained rotation
 }
@@ -63,7 +63,10 @@ export interface MeasurementResult {
 }
 
 export interface ExportImageOptions {
-  scale?: number; // 1, 2, 4
+  scale?: number | 'original'; // 1, 2, 4 or 'original'
+  originalQuality?: boolean; // Export at model's actual original texture size (1:1 贴图原画质)
+  targetSize?: { width: number; height: number }; // Optional custom target dimensions
+  modelOnly?: boolean; // Only export model + background, hiding helpers/measurements/grid/clipping planes (default: true)
   type?: 'image/png' | 'image/jpeg';
   quality?: number; // 0 to 1
   download?: boolean;
@@ -104,7 +107,7 @@ export interface SectioningState {
   position?: number;
 }
 
-export type ModelDisplayStyle = 'solid' | 'wireframe' | 'points';
+export type ModelDisplayStyle = 'solid' | 'wireframe';
 
 export interface PointsOptions {
   size?: number;
@@ -136,5 +139,5 @@ export type ViewerEvents = {
   'autorotate:change': (options: AutoRotateOptions) => void;
   'axislock:change': (lockedAxis: RotationLockAxis) => void;
   'style:change': (style: ModelDisplayStyle) => void;
-  'pointsize:change': (size: number) => void;
+  'pointsize:change'?: (size: number) => void;
 };

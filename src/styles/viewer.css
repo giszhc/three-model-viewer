@@ -102,6 +102,21 @@
   border-color: rgba(59, 130, 246, 0.4);
 }
 
+/* Light Theme Overrides for 3D Badges */
+[data-theme="light"] .gmv-dimension-badge {
+  background: rgba(255, 255, 255, 0.92);
+  color: #1e293b;
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .gmv-measure-badge {
+  background: rgba(255, 255, 255, 0.94);
+  color: #0f172a;
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
 /* Tooltip Guide during interactive measuring/clipping */
 .gmv-interaction-tip {
   position: absolute;
