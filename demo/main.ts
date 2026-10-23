@@ -39,6 +39,117 @@ const loadingStatus = document.getElementById('loading-status') as HTMLElement;
 const loadingBar = document.getElementById('loading-bar') as HTMLElement;
 const loadingPercent = document.getElementById('loading-percent') as HTMLElement;
 
+// Popovers & Drawer Elements (Declared early to avoid Temporal Dead Zone)
+const popoverViews = document.getElementById('popover-views') as HTMLElement;
+const popoverAutorotate = document.getElementById('popover-autorotate') as HTMLElement;
+const popoverAppearance = document.getElementById('popover-appearance') as HTMLElement;
+const popoverExport = document.getElementById('popover-export') as HTMLElement;
+const allPopovers = [popoverViews, popoverAutorotate, popoverAppearance, popoverExport];
+
+const btnDrawerClose = document.getElementById('btn-drawer-close') as HTMLButtonElement;
+const tabMeasureBtn = document.getElementById('tab-measure-btn') as HTMLButtonElement;
+const tabClipBtn = document.getElementById('tab-clip-btn') as HTMLButtonElement;
+const drawerPanelMeasure = document.getElementById('drawer-panel-measure') as HTMLElement;
+const drawerPanelClip = document.getElementById('drawer-panel-clip') as HTMLElement;
+
+// Popover Animations & Controls
+function openPopover(popover: HTMLElement): void {
+  if (!popover) return;
+  popover.classList.add('open');
+  const isTop = popover.classList.contains('popover-menu-top');
+  gsap.killTweensOf(popover);
+  gsap.fromTo(
+    popover,
+    {
+      opacity: 0,
+      scale: 0.93,
+      y: isTop ? -14 : 16,
+    },
+    {
+      opacity: 1,
+      scale: 1,
+      y: 0,
+      duration: 0.36,
+      ease: 'back.out(1.5)',
+      clearProps: 'transform,scale',
+    }
+  );
+}
+
+function closePopover(popover: HTMLElement): void {
+  if (!popover || !popover.classList.contains('open')) return;
+  const isTop = popover.classList.contains('popover-menu-top');
+  gsap.killTweensOf(popover);
+  gsap.to(popover, {
+    opacity: 0,
+    scale: 0.95,
+    y: isTop ? -8 : 10,
+    duration: 0.2,
+    ease: 'power2.in',
+    onComplete: () => {
+      popover.classList.remove('open');
+      gsap.set(popover, { clearProps: 'all' });
+    },
+  });
+}
+
+function togglePopover(targetPopover: HTMLElement): void {
+  if (!targetPopover) return;
+  const isOpen = targetPopover.classList.contains('open');
+  if (Array.isArray(allPopovers)) {
+    allPopovers.forEach((p) => {
+      if (p && p !== targetPopover && p.classList.contains('open')) {
+        closePopover(p);
+      }
+    });
+  }
+
+  if (isOpen) {
+    closePopover(targetPopover);
+  } else {
+    openPopover(targetPopover);
+  }
+}
+
+function closeAllPopovers(): void {
+  if (!allPopovers || !Array.isArray(allPopovers)) return;
+  allPopovers.forEach((p) => {
+    if (p && p.classList.contains('open')) {
+      closePopover(p);
+    }
+  });
+}
+
+// Side Drawer Animations
+function animateDrawerOpen(): void {
+  if (!sideDrawer) return;
+  sideDrawer.classList.add('open');
+  btnDockTools?.classList.add('active');
+  gsap.killTweensOf(sideDrawer);
+  gsap.fromTo(
+    sideDrawer,
+    { x: 45, opacity: 0, scale: 0.98 },
+    { x: 0, opacity: 1, scale: 1, duration: 0.42, ease: 'power3.out', clearProps: 'transform,scale' }
+  );
+}
+
+function animateDrawerClose(): void {
+  if (!sideDrawer || !sideDrawer.classList.contains('open')) return;
+  btnDockTools?.classList.remove('active');
+  gsap.killTweensOf(sideDrawer);
+  gsap.to(sideDrawer, {
+    x: 35,
+    opacity: 0,
+    scale: 0.98,
+    duration: 0.26,
+    ease: 'power2.in',
+    onComplete: () => {
+      sideDrawer.classList.remove('open');
+      gsap.set(sideDrawer, { clearProps: 'all' });
+    },
+  });
+}
+
 let tipTimer: number | null = null;
 function showTip(text: string, duration: number = 2500): void {
   if (tipTimer) clearTimeout(tipTimer);
@@ -422,77 +533,8 @@ document.getElementById('btn-toggle-fullscreen')?.addEventListener('click', () =
 });
 
 // ==========================================
-// Popover Menus Manager (Dock & Top Menus with GSAP)
+// Popover Menus Event Listeners
 // ==========================================
-const popoverViews = document.getElementById('popover-views') as HTMLElement;
-const popoverAutorotate = document.getElementById('popover-autorotate') as HTMLElement;
-const popoverAppearance = document.getElementById('popover-appearance') as HTMLElement;
-const popoverExport = document.getElementById('popover-export') as HTMLElement;
-
-const allPopovers = [popoverViews, popoverAutorotate, popoverAppearance, popoverExport];
-
-function openPopover(popover: HTMLElement): void {
-  popover.classList.add('open');
-  const isTop = popover.classList.contains('popover-menu-top');
-  gsap.killTweensOf(popover);
-  gsap.fromTo(
-    popover,
-    {
-      opacity: 0,
-      scale: 0.93,
-      y: isTop ? -14 : 16,
-    },
-    {
-      opacity: 1,
-      scale: 1,
-      y: 0,
-      duration: 0.36,
-      ease: 'back.out(1.5)',
-      clearProps: 'transform,scale',
-    }
-  );
-}
-
-function closePopover(popover: HTMLElement): void {
-  if (!popover.classList.contains('open')) return;
-  const isTop = popover.classList.contains('popover-menu-top');
-  gsap.killTweensOf(popover);
-  gsap.to(popover, {
-    opacity: 0,
-    scale: 0.95,
-    y: isTop ? -8 : 10,
-    duration: 0.2,
-    ease: 'power2.in',
-    onComplete: () => {
-      popover.classList.remove('open');
-      gsap.set(popover, { clearProps: 'all' });
-    },
-  });
-}
-
-function togglePopover(targetPopover: HTMLElement): void {
-  const isOpen = targetPopover.classList.contains('open');
-  allPopovers.forEach((p) => {
-    if (p && p !== targetPopover && p.classList.contains('open')) {
-      closePopover(p);
-    }
-  });
-
-  if (isOpen) {
-    closePopover(targetPopover);
-  } else {
-    openPopover(targetPopover);
-  }
-}
-
-function closeAllPopovers(): void {
-  allPopovers.forEach((p) => {
-    if (p && p.classList.contains('open')) {
-      closePopover(p);
-    }
-  });
-}
-
 document.getElementById('btn-dock-views')?.addEventListener('click', (e) => {
   e.stopPropagation();
   togglePopover(popoverViews);
@@ -522,42 +564,8 @@ document.addEventListener('click', (e) => {
 });
 
 // ==========================================
-// Side Drawer (Toolbox: Measure & Sectioning with GSAP)
+// Side Drawer Event Listeners
 // ==========================================
-const btnDrawerClose = document.getElementById('btn-drawer-close') as HTMLButtonElement;
-const tabMeasureBtn = document.getElementById('tab-measure-btn') as HTMLButtonElement;
-const tabClipBtn = document.getElementById('tab-clip-btn') as HTMLButtonElement;
-const drawerPanelMeasure = document.getElementById('drawer-panel-measure') as HTMLElement;
-const drawerPanelClip = document.getElementById('drawer-panel-clip') as HTMLElement;
-
-function animateDrawerOpen(): void {
-  sideDrawer.classList.add('open');
-  btnDockTools.classList.add('active');
-  gsap.killTweensOf(sideDrawer);
-  gsap.fromTo(
-    sideDrawer,
-    { x: 45, opacity: 0, scale: 0.98 },
-    { x: 0, opacity: 1, scale: 1, duration: 0.42, ease: 'power3.out', clearProps: 'transform,scale' }
-  );
-}
-
-function animateDrawerClose(): void {
-  if (!sideDrawer.classList.contains('open')) return;
-  btnDockTools.classList.remove('active');
-  gsap.killTweensOf(sideDrawer);
-  gsap.to(sideDrawer, {
-    x: 35,
-    opacity: 0,
-    scale: 0.98,
-    duration: 0.26,
-    ease: 'power2.in',
-    onComplete: () => {
-      sideDrawer.classList.remove('open');
-      gsap.set(sideDrawer, { clearProps: 'all' });
-    },
-  });
-}
-
 btnDockTools?.addEventListener('click', () => {
   const isOpen = sideDrawer.classList.contains('open');
   if (isOpen) {
