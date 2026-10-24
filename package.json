@@ -5,24 +5,31 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "unpkg": "./dist/index.umd.js",
+  "jsdelivr": "./dist/index.umd.js",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.umd.js"
     },
     "./style.css": "./dist/style.css"
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build:lib": "vite build",
+    "build:cdn": "vite build --mode cdn",
+    "build": "vite build && vite build --mode cdn",
     "build:demo": "vite build --mode demo",
     "preview": "vite preview",
-    "preview:demo": "vite preview --outDir dist-demo"
+    "preview:demo": "vite preview --outDir dist-demo",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "three",

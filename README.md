@@ -37,7 +37,11 @@
 
 ---
 
-## 📦 安装
+## 📦 安装与引入
+
+### 1. 工程化包管理器安装 (推荐)
+
+适用于 Vue、React、Vite、Webpack、Next.js 等前端现代化项目：
 
 ```bash
 # npm
@@ -48,6 +52,49 @@ pnpm add @giszhc/three-model-viewer three
 
 # yarn
 yarn add @giszhc/three-model-viewer three
+```
+
+### 2. CDN 直链引入 (开箱即用，免打包)
+
+SDK 提供了内置自包含引擎的 UMD 单文件产物，直接通过 `<script>` 标签引入即可自动在全局挂载 `window.ThreeModelViewer`：
+
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>3D Model Viewer CDN 示例</title>
+  <!-- 1. 引入 3D 尺寸与测量标签样式 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@giszhc/three-model-viewer/dist/style.css">
+  <style>
+    html, body, #viewport { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <div id="viewport"></div>
+
+  <!-- 2. 引入 SDK UMD 单文件产物 (支持 unpkg 或 jsdelivr) -->
+  <script src="https://cdn.jsdelivr.net/npm/@giszhc/three-model-viewer/dist/index.umd.js"></script>
+  <!-- 或者使用 unpkg: -->
+  <!-- <script src="https://unpkg.com/@giszhc/three-model-viewer/dist/index.umd.js"></script> -->
+
+  <script>
+    // 3. 直接通过全局对象初始化
+    const { Viewer } = window.ThreeModelViewer;
+
+    const viewer = new Viewer({
+      container: document.getElementById('viewport'),
+      background: '#070a14',
+      unit: 'm',
+      antialias: true
+    });
+
+    // 4. 支持直接载入在线 .zip 或 .obj 链接
+    viewer.loadZip('https://example.com/models/sample.zip');
+    // 或 viewer.loadOBJ('https://example.com/models/sample.obj', 'https://example.com/models/sample.mtl');
+  </script>
+</body>
+</html>
 ```
 
 ---
