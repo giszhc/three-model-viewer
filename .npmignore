@@ -1,0 +1,25 @@
+# 源码与开发工程目录
+src/
+demo/
+public/
+dist-demo/
+
+# 配置文件与开发工具
+.github/
+.vscode/
+.idea/
+*.local
+*.log
+.npmrc
+vite.config.ts
+tsconfig.json
+tsconfig.node.json
+pnpm-lock.yaml
+package-lock.json
+
+# 核心白名单：强制确保打包包含 dist、说明文档与许可证
+!dist/
+!dist/**
+!README.md
+!LICENSE
+!package.json

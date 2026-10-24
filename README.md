@@ -3,7 +3,7 @@
 > 🚀 现代化、高内聚的 Web 3D 模型检视与工程测量 SDK。基于 **Three.js** 与 **TypeScript** 构建，专为 Web 端三维轻量化展示、尺寸标注、空间测量与截面剖切量身定制。
 
 [![Live Demo](https://img.shields.io/badge/Demo-在线实时体验-0ea5e9?style=flat-square&logo=github)](https://giszhc.github.io/three-model-viewer/)
-[![npm version](https://img.shields.io/badge/npm-v1.0.0-blue.svg)](https://www.npmjs.com/package/@giszhc/three-model-viewer)
+[![npm version](https://img.shields.io/badge/npm-v1.0.1-blue.svg)](https://www.npmjs.com/package/@giszhc/three-model-viewer)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-3178c6.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 

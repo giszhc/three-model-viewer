@@ -1,6 +1,6 @@
 {
   "name": "@giszhc/three-model-viewer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A modern, professional 3D model inspector and viewer SDK for Web applications. Features OBJ/MTL/ZIP loading, 3D measurements, dynamic dimensional bounding box, plane slicing, and high-res export.",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -29,6 +29,7 @@
     "build:demo": "vite build --mode demo",
     "preview": "vite preview",
     "preview:demo": "vite preview --outDir dist-demo",
+    "prepack": "npm run build",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
