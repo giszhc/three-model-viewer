@@ -813,6 +813,70 @@
       color: var(--accent);
     }
 
+    /* URL Online Model Input Component */
+    .url-upload-section {
+      width: 100%;
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .url-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 11px;
+      color: var(--text-sub);
+      font-weight: 500;
+      width: 100%;
+    }
+    .url-divider::before,
+    .url-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--panel-border);
+      opacity: 0.6;
+    }
+    .url-input-group {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      align-items: center;
+    }
+    .url-input-wrapper {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: center;
+    }
+    .url-input-icon {
+      position: absolute;
+      left: 12px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    .glass-url-input {
+      width: 100%;
+      padding: 9px 12px 9px 34px;
+      border-radius: 14px;
+      border: 1px solid var(--panel-border);
+      background: var(--card-bg);
+      color: var(--text-main);
+      font-size: 12px;
+      outline: none;
+      transition: all 0.22s ease;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+    .glass-url-input:focus {
+      border-color: var(--accent);
+      background: rgba(14, 165, 233, 0.08);
+      box-shadow: 0 0 16px -2px var(--accent-glow), inset 0 1px 3px rgba(0, 0, 0, 0.15);
+    }
+    .glass-url-input::placeholder {
+      color: var(--text-sub);
+    }
+
     /* Modern Loading Modal */
     .loading-overlay {
       position: absolute;
@@ -1054,6 +1118,36 @@
         </label>
         <input type="file" id="file-input" accept=".zip,.obj,.mtl" multiple style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; overflow: hidden;" />
 
+        <!-- Load from Online URL Button & Popover -->
+        <div style="position: relative;" id="top-url-wrapper">
+          <button type="button" class="btn" id="btn-top-url-toggle" title="输入在线模型地址 (.zip 或 .obj)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+            <span>输入地址</span>
+          </button>
+          <div class="popover-menu popover-menu-top" id="popover-url" style="width: 320px;">
+            <div class="popover-title">
+              <span>在线模型直链 (.zip / .obj)</span>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 6px;">
+              <input 
+                type="url" 
+                id="input-top-url" 
+                class="glass-url-input" 
+                placeholder="https://.../model.zip 或 .obj" 
+                autocomplete="off"
+                spellcheck="false"
+                style="padding-left: 14px;"
+              />
+              <button type="button" class="btn primary" id="btn-top-url-load" style="padding: 7px 16px; font-size: 12px; white-space: nowrap;">
+                载入
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- Export Dropdown Button -->
         <div style="position: relative;" id="export-menu-wrapper" class="hidden">
           <button class="btn" id="btn-export-menu-toggle">
@@ -1130,6 +1224,32 @@
           <label for="zone-file-input" class="btn primary" id="btn-browse-zone" style="padding: 10px 24px; font-size: 13px; border-radius: 12px; cursor: pointer;">
             📂 浏览本地文件
           </label>
+        </div>
+
+        <!-- Online URL Load Input -->
+        <div class="url-upload-section" id="zone-url-section">
+          <div class="url-divider">
+            <span>或者输入在线模型地址</span>
+          </div>
+          <div class="url-input-group">
+            <div class="url-input-wrapper">
+              <svg class="url-input-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+              </svg>
+              <input 
+                type="url" 
+                id="input-zone-url" 
+                class="glass-url-input" 
+                placeholder="输入 .zip 或 .obj 在线直链 (支持 https://...)" 
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </div>
+            <button type="button" class="btn primary btn-load-url" id="btn-load-zone-url" style="padding: 8px 18px; border-radius: 12px; font-size: 13px; white-space: nowrap;">
+              <span>载入</span>
+            </button>
+          </div>
         </div>
         <input type="file" id="zone-file-input" accept=".zip,.obj,.mtl" multiple style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; overflow: hidden;" />
       </div>

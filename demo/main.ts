@@ -31,6 +31,16 @@ const btnBrowseZone = document.getElementById('btn-browse-zone') as HTMLElement;
 const btnUnloadModel = document.getElementById('btn-unload-model') as HTMLButtonElement;
 const btnTopOpen = document.getElementById('btn-top-open') as HTMLElement;
 
+// URL Online Model Load Elements
+const inputZoneUrl = document.getElementById('input-zone-url') as HTMLInputElement;
+const btnLoadZoneUrl = document.getElementById('btn-load-zone-url') as HTMLButtonElement;
+const zoneUrlSection = document.getElementById('zone-url-section') as HTMLElement;
+
+const btnTopUrlToggle = document.getElementById('btn-top-url-toggle') as HTMLButtonElement;
+const popoverUrl = document.getElementById('popover-url') as HTMLElement;
+const inputTopUrl = document.getElementById('input-top-url') as HTMLInputElement;
+const btnTopUrlLoad = document.getElementById('btn-top-url-load') as HTMLButtonElement;
+
 // Modern Glassmorphism Loading Modal Elements
 const loadingOverlay = document.getElementById('loading-overlay') as HTMLElement;
 const loadingTitle = document.getElementById('loading-title') as HTMLElement;
@@ -43,7 +53,7 @@ const popoverViews = document.getElementById('popover-views') as HTMLElement;
 const popoverAutorotate = document.getElementById('popover-autorotate') as HTMLElement;
 const popoverAppearance = document.getElementById('popover-appearance') as HTMLElement;
 const popoverExport = document.getElementById('popover-export') as HTMLElement;
-const allPopovers = [popoverViews, popoverAutorotate, popoverAppearance, popoverExport];
+const allPopovers = [popoverViews, popoverAutorotate, popoverAppearance, popoverExport, popoverUrl];
 
 const btnDrawerClose = document.getElementById('btn-drawer-close') as HTMLButtonElement;
 const tabMeasureBtn = document.getElementById('tab-measure-btn') as HTMLButtonElement;
@@ -363,8 +373,25 @@ btnBrowseZone?.addEventListener('click', (e) => {
 
 uploadZone?.addEventListener('click', (e) => {
   const target = e.target as HTMLElement;
-  if (target.classList.contains('hint-link') || target.closest('#btn-browse-zone')) return;
+  if (target.classList.contains('hint-link') || target.closest('#btn-browse-zone') || target.closest('#zone-url-section')) return;
   zoneFileInput?.click();
+});
+
+// Prevent interaction inside URL section from bubbling to uploadZone
+zoneUrlSection?.addEventListener('click', (e) => {
+  e.stopPropagation();
+});
+
+btnLoadZoneUrl?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  handleLoadFromUrl(inputZoneUrl?.value);
+});
+
+inputZoneUrl?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    handleLoadFromUrl(inputZoneUrl?.value);
+  }
 });
 
 zoneFileInput?.addEventListener('change', async (e) => {
@@ -447,6 +474,61 @@ async function handleLoadedFiles(fileList: FileList | File[]): Promise<void> {
   }
 }
 
+/**
+ * Load model directly from an online URL (.zip or .obj).
+ */
+async function handleLoadFromUrl(rawUrl?: string): Promise<void> {
+  const url = rawUrl?.trim();
+  if (!url) {
+    showTip('⚠️ 请先输入模型在线直链地址');
+    return;
+  }
+
+  if (!/^https?:\/\//i.test(url)) {
+    showTip('⚠️ 请输入以 http:// 或 https:// 开头的网络地址');
+    return;
+  }
+
+  let modelName = '在线模型';
+  try {
+    const parsed = new URL(url);
+    const candidate = parsed.pathname.split('/').filter(Boolean).pop();
+    if (candidate) modelName = decodeURIComponent(candidate);
+  } catch (_) {
+    modelName = url.split('/').pop()?.split('?')[0] || '在线模型';
+  }
+
+  if (brandModelName) brandModelName.textContent = modelName;
+  closeAllPopovers();
+
+  const cleanPath = url.split('?')[0].toLowerCase();
+  try {
+    if (cleanPath.endsWith('.zip')) {
+      showTip(`正在下载并解析在线 ZIP 模型: ${modelName}...`);
+      await viewer.loadZip(url);
+      showTip(`✅ 成功载入在线模型: ${modelName}`);
+    } else if (cleanPath.endsWith('.obj')) {
+      showTip(`正在下载在线网格模型: ${modelName}...`);
+      await viewer.loadOBJ(url);
+      showTip(`✅ 成功载入在线模型: ${modelName}`);
+    } else {
+      showTip(`正在尝试载入在线模型: ${modelName}...`);
+      try {
+        await viewer.loadZip(url);
+        showTip(`✅ 成功载入在线模型: ${modelName}`);
+      } catch (zipErr) {
+        await viewer.loadOBJ(url);
+        showTip(`✅ 成功载入在线 OBJ 模型: ${modelName}`);
+      }
+    }
+    setTimeout(hideTip, 3000);
+  } catch (err) {
+    const errorMsg = (err as Error).message || String(err);
+    showTip(`❌ 载入失败: ${errorMsg}（请确认目标链接支持跨域 CORS 访问）`);
+    setTimeout(hideTip, 5500);
+  }
+}
+
 const fileInput = document.getElementById('file-input') as HTMLInputElement;
 btnTopOpen?.addEventListener('click', (e) => {
   if (e.target !== fileInput) {
@@ -459,6 +541,27 @@ fileInput?.addEventListener('change', async (e) => {
     await handleLoadedFiles(target.files);
   }
   target.value = '';
+});
+
+// Top URL Popover Events
+btnTopUrlToggle?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  togglePopover(popoverUrl);
+  if (popoverUrl.classList.contains('open')) {
+    setTimeout(() => inputTopUrl?.focus(), 120);
+  }
+});
+
+btnTopUrlLoad?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  handleLoadFromUrl(inputTopUrl?.value);
+});
+
+inputTopUrl?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    handleLoadFromUrl(inputTopUrl?.value);
+  }
 });
 
 // Drag and drop handling
@@ -548,7 +651,12 @@ document.getElementById('btn-export-menu-toggle')?.addEventListener('click', (e)
 // Close popovers on clicking outside
 document.addEventListener('click', (e) => {
   const target = e.target as HTMLElement;
-  if (!target.closest('.popover-menu') && !target.closest('.dock-btn') && !target.closest('#btn-export-menu-toggle')) {
+  if (
+    !target.closest('.popover-menu') &&
+    !target.closest('.dock-btn') &&
+    !target.closest('#btn-export-menu-toggle') &&
+    !target.closest('#btn-top-url-toggle')
+  ) {
     closeAllPopovers();
   }
 });
