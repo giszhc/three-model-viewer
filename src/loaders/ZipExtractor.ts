@@ -2,10 +2,13 @@ import JSZip from 'jszip';
 import * as THREE from 'three';
 
 export interface ExtractedZipContent {
-  objContent: string | ArrayBuffer;
-  objFileName: string;
-  mtlContent: string | null;
-  mtlFileName: string | null;
+  format: 'obj' | 'gltf' | 'glb';
+  objContent?: string | ArrayBuffer;
+  objFileName?: string;
+  mtlContent?: string | null;
+  mtlFileName?: string | null;
+  gltfContent?: string | ArrayBuffer;
+  gltfFileName?: string;
   blobUrls: Map<string, string>;
   loadingManager: THREE.LoadingManager;
   dispose: () => void;
@@ -20,7 +23,7 @@ export class ZipExtractor {
   ): Promise<ExtractedZipContent> {
     let arrayBuffer: ArrayBuffer;
 
-    onProgress?.(5, '正在读取文件字节流...');
+    onProgress?.(5, '正在读取压缩包文件流...');
 
     if (typeof source === 'string') {
       const response = await fetch(source);
@@ -38,10 +41,12 @@ export class ZipExtractor {
     const zip = await JSZip.loadAsync(arrayBuffer);
     const blobUrls = new Map<string, string>();
 
+    let glbZipEntry: JSZip.JSZipObject | null = null;
+    let gltfZipEntry: JSZip.JSZipObject | null = null;
     let objZipEntry: JSZip.JSZipObject | null = null;
     let mtlZipEntry: JSZip.JSZipObject | null = null;
 
-    const imageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.bmp', '.tga', '.dds'];
+    const imageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.bmp', '.tga', '.dds', '.hdr', '.svg', '.ktx2'];
 
     // 1. Identify files in ZIP
     const files = Object.keys(zip.files);
@@ -58,67 +63,98 @@ export class ZipExtractor {
       }
 
       const lower = filename.toLowerCase();
+      const baseName = filename.split('/').pop() || filename;
       const currentPercent = Math.round(20 + (i / totalFiles) * 35); // 20% -> 55%
 
-      // Find OBJ file (prefer top-level or first found)
-      if (lower.endsWith('.obj') && !objZipEntry) {
+      // Model formats detection (GLB / GLTF / OBJ / MTL)
+      if (lower.endsWith('.glb') && !glbZipEntry) {
+        glbZipEntry = entry;
+        onProgress?.(currentPercent, `找到 GLB 二进制模型: ${baseName}`);
+      } else if (lower.endsWith('.gltf') && !gltfZipEntry) {
+        gltfZipEntry = entry;
+        onProgress?.(currentPercent, `找到 GLTF 场景定义: ${baseName}`);
+      } else if (lower.endsWith('.obj') && !objZipEntry) {
         objZipEntry = entry;
-        onProgress?.(currentPercent, `找到模型文件: ${filename.split('/').pop()}`);
+        onProgress?.(currentPercent, `找到 OBJ 网格模型: ${baseName}`);
       } else if (lower.endsWith('.mtl') && !mtlZipEntry) {
         mtlZipEntry = entry;
-        onProgress?.(currentPercent, `找到材质定义: ${filename.split('/').pop()}`);
+        onProgress?.(currentPercent, `找到 MTL 材质定义: ${baseName}`);
+      }
+
+      // Buffer bin files for GLTF
+      if (lower.endsWith('.bin')) {
+        onProgress?.(currentPercent, `加载二进制缓冲区: ${baseName}`);
+        const blob = await entry.async('blob');
+        const objectUrl = URL.createObjectURL(blob);
+        blobUrls.set(filename, objectUrl);
+        blobUrls.set(baseName, objectUrl);
+        blobUrls.set(baseName.toLowerCase(), objectUrl);
       }
 
       // Check for image textures
       const isImage = imageExtensions.some((ext) => lower.endsWith(ext));
       if (isImage) {
-        const baseName = filename.split('/').pop() || filename;
-        onProgress?.(currentPercent, `加载贴图: ${baseName}`);
+        onProgress?.(currentPercent, `加载贴图资源: ${baseName}`);
         const blob = await entry.async('blob');
         const objectUrl = URL.createObjectURL(blob);
-        // Store full path, simple filename, and lowercase versions for robust lookup
         blobUrls.set(filename, objectUrl);
         blobUrls.set(baseName, objectUrl);
         blobUrls.set(baseName.toLowerCase(), objectUrl);
       }
     }
 
-    onProgress?.(60, '提取完成，准备解析三维几何网格...');
+    onProgress?.(60, 'ZIP 资源索引提取完毕，准备解析三维模型网格...');
 
-    if (!objZipEntry) {
-      // Clean up created URLs if no OBJ found
+    // Priority: GLB > GLTF > OBJ
+    let format: 'obj' | 'gltf' | 'glb';
+    if (glbZipEntry) {
+      format = 'glb';
+    } else if (gltfZipEntry) {
+      format = 'gltf';
+    } else if (objZipEntry) {
+      format = 'obj';
+    } else {
+      // Clean up created URLs if no model found
       blobUrls.forEach((url) => URL.revokeObjectURL(url));
-      throw new Error('No .obj file found in the zip archive.');
+      throw new Error('ZIP 压缩包中未检测到支持的 3D 模型文件（需要包含 .glb, .gltf 或 .obj 文件）');
     }
 
-    const objContent = await objZipEntry.async('string');
-    const objFileName = objZipEntry.name;
-
+    let objContent: string | ArrayBuffer | undefined;
+    let objFileName: string | undefined;
     let mtlContent: string | null = null;
     let mtlFileName: string | null = null;
+    let gltfContent: string | ArrayBuffer | undefined;
+    let gltfFileName: string | undefined;
 
-    if (mtlZipEntry) {
-      mtlContent = await mtlZipEntry.async('string');
-      mtlFileName = mtlZipEntry.name;
+    if (format === 'glb') {
+      gltfContent = await glbZipEntry!.async('arraybuffer');
+      gltfFileName = glbZipEntry!.name;
+    } else if (format === 'gltf') {
+      gltfContent = await gltfZipEntry!.async('string');
+      gltfFileName = gltfZipEntry!.name;
+    } else {
+      objContent = await objZipEntry!.async('string');
+      objFileName = objZipEntry!.name;
+      if (mtlZipEntry) {
+        mtlContent = await mtlZipEntry.async('string');
+        mtlFileName = mtlZipEntry.name;
+      }
     }
 
-    // 2. Setup Three.js LoadingManager to intercept and resolve texture URLs
+    // Setup Three.js LoadingManager to intercept and resolve binary/texture URLs
     const loadingManager = new THREE.LoadingManager();
     loadingManager.setURLModifier((url: string) => {
-      // Decode URL if encoded
-      const cleanUrl = decodeURIComponent(url);
+      const cleanUrl = decodeURIComponent(url).replace(/^\.\//, '');
       const baseName = cleanUrl.split('/').pop()?.split('\\').pop() || cleanUrl;
 
-      if (blobUrls.has(cleanUrl)) {
-        return blobUrls.get(cleanUrl)!;
-      }
-      if (blobUrls.has(baseName)) {
-        return blobUrls.get(baseName)!;
-      }
+      if (blobUrls.has(url)) return blobUrls.get(url)!;
+      if (blobUrls.has(cleanUrl)) return blobUrls.get(cleanUrl)!;
+      if (blobUrls.has(baseName)) return blobUrls.get(baseName)!;
 
       // Case-insensitive fallback
+      const lowerBase = baseName.toLowerCase();
       for (const [key, blobUrl] of blobUrls.entries()) {
-        if (key.toLowerCase() === baseName.toLowerCase()) {
+        if (key.toLowerCase() === lowerBase || key.toLowerCase().endsWith('/' + lowerBase)) {
           return blobUrl;
         }
       }
@@ -138,10 +174,13 @@ export class ZipExtractor {
     };
 
     return {
+      format,
       objContent,
       objFileName,
       mtlContent,
       mtlFileName,
+      gltfContent,
+      gltfFileName,
       blobUrls,
       loadingManager,
       dispose,

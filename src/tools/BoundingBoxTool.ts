@@ -53,9 +53,10 @@ export class BoundingBoxTool {
     this.currentModel = model;
     this.unit = options?.unit || 'm';
 
-    // 1. Compute model's local bounding box
+    // 1. Compute model's local bounding box accurately across hierarchies
     model.updateMatrixWorld(true);
     const box = new THREE.Box3();
+    const invModelMatrix = model.matrixWorld.clone().invert();
 
     // Traverse all meshes in model to compute local bounds
     model.traverse((child) => {
@@ -66,7 +67,9 @@ export class BoundingBoxTool {
             mesh.geometry.computeBoundingBox();
           }
           if (mesh.geometry.boundingBox) {
-            box.union(mesh.geometry.boundingBox);
+            const relMatrix = mesh.matrixWorld.clone().premultiply(invModelMatrix);
+            const meshBox = mesh.geometry.boundingBox.clone().applyMatrix4(relMatrix);
+            box.union(meshBox);
           }
         }
       }

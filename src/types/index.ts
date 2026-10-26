@@ -36,6 +36,8 @@ export interface ViewerOptions {
   showBoundingBox?: boolean; // default: false (默认隐藏范围框及尺寸线)
   unit?: string; // e.g. 'm', 'mm', 'cm'
   controlsType?: 'trackball' | 'orbit'; // default: 'trackball' for infinite 360° unconstrained rotation
+  dracoDecoderPath?: string; // Optional custom Draco decoder path (default: https://www.gstatic.com/draco/versioned/decoders/1.5.7/)
+  ktx2TranscoderPath?: string; // Optional custom KTX2 Basis transcoder path (default: https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/libs/basis/)
 }
 
 export interface ModelLoadResult {
@@ -45,6 +47,8 @@ export interface ModelLoadResult {
   center: THREE.Vector3;
   vertexCount: number;
   faceCount: number;
+  animations?: THREE.AnimationClip[];
+  format?: 'obj' | 'gltf' | 'glb' | 'sample';
 }
 
 export interface MeasurementResult {
@@ -140,4 +144,8 @@ export type ViewerEvents = {
   'axislock:change': (lockedAxis: RotationLockAxis) => void;
   'style:change': (style: ModelDisplayStyle) => void;
   'pointsize:change'?: (size: number) => void;
+  'animation:play'?: (name: string) => void;
+  'animation:pause'?: () => void;
+  'animation:stop'?: () => void;
+  'animation:speed'?: (speed: number) => void;
 };

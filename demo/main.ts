@@ -15,6 +15,7 @@ const viewer = new Viewer({
 const statVerts = document.getElementById('stat-verts') as HTMLElement;
 const statFaces = document.getElementById('stat-faces') as HTMLElement;
 const statDims = document.getElementById('stat-dims') as HTMLElement;
+const statFormat = document.getElementById('stat-format') as HTMLElement;
 const toolTip = document.getElementById('tool-tip') as HTMLElement;
 const brandModelName = document.getElementById('brand-model-name') as HTMLElement;
 const dockBar = document.getElementById('dock-bar') as HTMLElement;
@@ -23,6 +24,14 @@ const exportMenuWrapper = document.getElementById('export-menu-wrapper') as HTML
 const btnToggleBbox = document.getElementById('btn-toggle-bbox') as HTMLButtonElement;
 const sideDrawer = document.getElementById('side-drawer') as HTMLElement;
 const btnDockTools = document.getElementById('btn-dock-tools') as HTMLButtonElement;
+
+// Animation Floating Controls Elements
+const animBadge = document.getElementById('anim-badge') as HTMLElement;
+const btnAnimPlayPause = document.getElementById('btn-anim-playpause') as HTMLButtonElement;
+const animIconPlay = document.getElementById('anim-icon-play') as HTMLElement;
+const animIconPause = document.getElementById('anim-icon-pause') as HTMLElement;
+const animSelect = document.getElementById('anim-select') as HTMLSelectElement;
+const animSpeedSelect = document.getElementById('anim-speed-select') as HTMLSelectElement;
 
 // Central Upload Zone Elements
 const uploadZone = document.getElementById('upload-zone') as HTMLElement;
@@ -194,6 +203,9 @@ function updateStats(result: ModelLoadResult): void {
   statVerts.textContent = result.vertexCount.toLocaleString();
   statFaces.textContent = result.faceCount.toLocaleString();
   statDims.textContent = `${result.size.x.toFixed(2)}m × ${result.size.y.toFixed(2)}m × ${result.size.z.toFixed(2)}m`;
+  if (statFormat) {
+    statFormat.textContent = (result.format || '3D').toUpperCase();
+  }
 }
 
 /**
@@ -221,6 +233,28 @@ function updateModelPresenceUI(hasModel: boolean, modelName?: string): void {
     if (brandModelName) {
       brandModelName.style.display = 'inline-block';
       if (modelName) brandModelName.textContent = modelName;
+    }
+
+    // Animation floating widget setup
+    const anims = viewer.getAnimations();
+    if (anims.length > 0) {
+      animBadge?.classList.remove('hidden');
+      if (animSelect) {
+        animSelect.innerHTML = '';
+        anims.forEach((name) => {
+          const opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          animSelect.appendChild(opt);
+        });
+        animSelect.value = viewer.getCurrentAnimation() || anims[0];
+      }
+      if (animIconPlay && animIconPause) {
+        animIconPlay.style.display = viewer.isAnimationPlaying() ? 'none' : 'block';
+        animIconPause.style.display = viewer.isAnimationPlaying() ? 'block' : 'none';
+      }
+    } else {
+      animBadge?.classList.add('hidden');
     }
 
     // Liquid spring entrance
@@ -252,6 +286,8 @@ function updateModelPresenceUI(hasModel: boolean, modelName?: string): void {
     }
   } else {
     // Exit animations with smooth retraction
+    animBadge?.classList.add('hidden');
+    if (statFormat) statFormat.textContent = '3D';
     gsap.killTweensOf([dockBar, hudBadge, exportMenuWrapper, btnUnloadModel]);
     gsap.to(dockBar, {
       y: 32,
@@ -439,34 +475,20 @@ btnUnloadModel?.addEventListener('click', () => {
 });
 
 // ==========================================
-// File Input & Drag and Drop (ZIP / OBJ)
+// File Input & Drag and Drop (GLB / GLTF / ZIP / OBJ)
 // ==========================================
 async function handleLoadedFiles(fileList: FileList | File[]): Promise<void> {
   const files = Array.from(fileList);
   if (files.length === 0) return;
 
-  const zipFile = files.find((f) => f.name.toLowerCase().endsWith('.zip'));
-  const objFile = files.find((f) => f.name.toLowerCase().endsWith('.obj'));
-  const mtlFile = files.find((f) => f.name.toLowerCase().endsWith('.mtl'));
+  const mainFile = files.find((f) => /\.(glb|gltf|zip|obj)$/i.test(f.name)) || files[0];
+  if (brandModelName) brandModelName.textContent = mainFile.name;
+  showTip(`正在解析并加载 ${mainFile.name}...`);
 
   try {
-    if (zipFile) {
-      if (brandModelName) brandModelName.textContent = zipFile.name;
-      showTip(`正在解压并加载 ${zipFile.name}...`);
-      await viewer.loadZip(zipFile);
-      showTip(`✅ 成功加载 ZIP 模型: ${zipFile.name}`);
-    } else if (objFile) {
-      if (brandModelName) brandModelName.textContent = objFile.name;
-      showTip(`正在加载 ${objFile.name}...`);
-      const objUrl = URL.createObjectURL(objFile);
-      const mtlUrl = mtlFile ? URL.createObjectURL(mtlFile) : undefined;
-      await viewer.loadOBJ(objUrl, mtlUrl);
-      showTip(`✅ 成功加载 OBJ 模型: ${objFile.name}`);
-    } else {
-      showTip('⚠️ 请选择 .zip 压缩包或 .obj 模型文件');
-      setTimeout(hideTip, 3000);
-      return;
-    }
+    const res = await viewer.loadFiles(files);
+    const fmt = (res.format || '3D').toUpperCase();
+    showTip(`✅ 成功加载模型: ${mainFile.name} [${fmt}]`);
     setTimeout(hideTip, 3000);
   } catch (err) {
     showTip(`❌ 加载失败: ${(err as Error).message}`);
@@ -475,7 +497,7 @@ async function handleLoadedFiles(fileList: FileList | File[]): Promise<void> {
 }
 
 /**
- * Load model directly from an online URL (.zip or .obj).
+ * Load model directly from an online URL (.glb, .gltf, .zip, or .obj).
  */
 async function handleLoadFromUrl(rawUrl?: string): Promise<void> {
   const url = rawUrl?.trim();
@@ -501,26 +523,11 @@ async function handleLoadFromUrl(rawUrl?: string): Promise<void> {
   if (brandModelName) brandModelName.textContent = modelName;
   closeAllPopovers();
 
-  const cleanPath = url.split('?')[0].toLowerCase();
+  showTip(`正在下载并解析在线模型: ${modelName}...`);
   try {
-    if (cleanPath.endsWith('.zip')) {
-      showTip(`正在下载并解析在线 ZIP 模型: ${modelName}...`);
-      await viewer.loadZip(url);
-      showTip(`✅ 成功载入在线模型: ${modelName}`);
-    } else if (cleanPath.endsWith('.obj')) {
-      showTip(`正在下载在线网格模型: ${modelName}...`);
-      await viewer.loadOBJ(url);
-      showTip(`✅ 成功载入在线模型: ${modelName}`);
-    } else {
-      showTip(`正在尝试载入在线模型: ${modelName}...`);
-      try {
-        await viewer.loadZip(url);
-        showTip(`✅ 成功载入在线模型: ${modelName}`);
-      } catch (zipErr) {
-        await viewer.loadOBJ(url);
-        showTip(`✅ 成功载入在线 OBJ 模型: ${modelName}`);
-      }
-    }
+    const res = await viewer.loadFromUrl(url);
+    const fmt = (res.format || '3D').toUpperCase();
+    showTip(`✅ 成功载入在线模型: ${modelName} [${fmt}]`);
     setTimeout(hideTip, 3000);
   } catch (err) {
     const errorMsg = (err as Error).message || String(err);
@@ -585,6 +592,43 @@ window.addEventListener('drop', async (e) => {
   if (e.dataTransfer?.files) {
     await handleLoadedFiles(e.dataTransfer.files);
   }
+});
+
+// ==========================================
+// Animation Controls Interaction
+// ==========================================
+btnAnimPlayPause?.addEventListener('click', () => {
+  if (viewer.isAnimationPlaying()) {
+    viewer.pauseAnimation();
+  } else {
+    viewer.resumeAnimation();
+  }
+});
+
+animSelect?.addEventListener('change', () => {
+  viewer.playAnimation(animSelect.value);
+});
+
+animSpeedSelect?.addEventListener('change', () => {
+  viewer.setAnimationSpeed(parseFloat(animSpeedSelect.value));
+});
+
+viewer.on('animation:play', (name) => {
+  if (animIconPlay) animIconPlay.style.display = 'none';
+  if (animIconPause) animIconPause.style.display = 'block';
+  if (animSelect && animSelect.value !== name) {
+    animSelect.value = name;
+  }
+});
+
+viewer.on('animation:pause', () => {
+  if (animIconPlay) animIconPlay.style.display = 'block';
+  if (animIconPause) animIconPause.style.display = 'none';
+});
+
+viewer.on('animation:stop', () => {
+  if (animIconPlay) animIconPlay.style.display = 'block';
+  if (animIconPause) animIconPause.style.display = 'none';
 });
 
 // ==========================================

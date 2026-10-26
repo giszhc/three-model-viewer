@@ -38,6 +38,14 @@ export class Viewer extends EventEmitter {
   private unit: string = 'm';
   private defaultShowBoundingBox: boolean = false;
 
+  // Animations (GLTF / GLB)
+  private animationMixer: THREE.AnimationMixer | null = null;
+  private animationClips: THREE.AnimationClip[] = [];
+  private activeAction: THREE.AnimationAction | null = null;
+  private currentAnimationName: string | null = null;
+  private animationClock: THREE.Clock = new THREE.Clock();
+  private isAnimationActive: boolean = false;
+
   constructor(options: ViewerOptions) {
     super();
 
@@ -47,8 +55,12 @@ export class Viewer extends EventEmitter {
     // 1. Core Scene Manager
     this.sceneManager = new SceneManager(options);
 
-    // 2. Model Loader
-    this.modelLoader = new ModelLoader();
+    // 2. Model Loader with Draco, Meshopt and KTX2 Basis compression support
+    this.modelLoader = new ModelLoader({
+      dracoDecoderPath: options.dracoDecoderPath,
+      ktx2TranscoderPath: options.ktx2TranscoderPath,
+      renderer: this.sceneManager.renderer,
+    });
 
     // 3. Tools
     this.boundingBoxTool = new BoundingBoxTool(this.sceneManager.scene);
@@ -85,8 +97,12 @@ export class Viewer extends EventEmitter {
     // Forward internal measurement events
     this.measurementTool.setUnit(this.unit);
 
-    // Dynamic per-frame updates: track bounding box edges, fixed-size markers, and auto-rotation
+    // Dynamic per-frame updates: track bounding box edges, fixed-size markers, auto-rotation, and animations
     this.sceneManager.onBeforeRender = () => {
+      if (this.animationMixer && this.isAnimationActive) {
+        const delta = this.animationClock.getDelta();
+        this.animationMixer.update(delta);
+      }
       this.boundingBoxTool.update(this.sceneManager.camera);
       this.cameraTool.updatePerFrame();
       this.measurementTool.updatePerFrame();
@@ -133,7 +149,7 @@ export class Viewer extends EventEmitter {
         this.emit('load:progress', percent, message);
       };
 
-      const result = await this.modelLoader.loadOBJ(objUrl, mtlUrl, onProgress);
+      const result = await this.modelLoader.loadOBJ(objUrl, mtlUrl, undefined, onProgress);
       this.setupLoadedModel(result);
       this.emit('load:success', result);
       return result;
@@ -141,6 +157,108 @@ export class Viewer extends EventEmitter {
       const error = err instanceof Error ? err : new Error(String(err));
       this.emit('load:error', error);
       throw error;
+    }
+  }
+
+  /**
+   * Load model from a GLTF URL or ArrayBuffer
+   */
+  public async loadGLTF(source: string | ArrayBuffer): Promise<ModelLoadResult> {
+    try {
+      this.emit('load:start', typeof source === 'string' ? source : 'GLTF Data');
+      this.clearModel();
+
+      const onProgress = (percent: number, message: string) => {
+        this.emit('load:progress', percent, message);
+      };
+
+      const result = await this.modelLoader.loadGLTF(source, undefined, onProgress);
+      this.setupLoadedModel(result);
+      this.emit('load:success', result);
+      return result;
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      this.emit('load:error', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Load GLB binary model from File, Blob, ArrayBuffer, or online URL
+   */
+  public async loadGLB(source: string | ArrayBuffer | Blob | File): Promise<ModelLoadResult> {
+    try {
+      const name = typeof source === 'string' ? source : (source instanceof File ? source.name : 'GLB Model');
+      this.emit('load:start', name);
+      this.clearModel();
+
+      const onProgress = (percent: number, message: string) => {
+        this.emit('load:progress', percent, message);
+      };
+
+      const result = await this.modelLoader.loadGLB(source, onProgress);
+      this.setupLoadedModel(result);
+      this.emit('load:success', result);
+      return result;
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      this.emit('load:error', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Automatically detect and load multiple selected or drag-dropped files
+   * (Supports .zip, .glb, .gltf + companion .bin / textures, .obj + .mtl / textures)
+   */
+  public async loadFiles(files: FileList | File[]): Promise<ModelLoadResult> {
+    try {
+      const fileArr = Array.from(files);
+      const mainName = fileArr[0]?.name || 'Files';
+      this.emit('load:start', mainName);
+      this.clearModel();
+
+      const onProgress = (percent: number, message: string) => {
+        this.emit('load:progress', percent, message);
+      };
+
+      const result = await this.modelLoader.loadFiles(files, onProgress);
+      this.setupLoadedModel(result);
+      this.emit('load:success', result);
+      return result;
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      this.emit('load:error', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Automatically load 3D model from an online URL (.glb, .gltf, .zip, .obj)
+   */
+  public async loadFromUrl(url: string): Promise<ModelLoadResult> {
+    const cleanUrl = url.split('?')[0].toLowerCase();
+    if (cleanUrl.endsWith('.glb')) {
+      return this.loadGLB(url);
+    }
+    if (cleanUrl.endsWith('.gltf')) {
+      return this.loadGLTF(url);
+    }
+    if (cleanUrl.endsWith('.zip')) {
+      return this.loadZip(url);
+    }
+    if (cleanUrl.endsWith('.obj')) {
+      return this.loadOBJ(url);
+    }
+    // Fallback: try glb -> gltf -> zip -> obj
+    try {
+      return await this.loadGLB(url);
+    } catch (_) {
+      try {
+        return await this.loadZip(url);
+      } catch (_2) {
+        return await this.loadOBJ(url);
+      }
     }
   }
 
@@ -205,6 +323,19 @@ export class Viewer extends EventEmitter {
 
     this.sceneManager.scene.add(this.currentModel);
 
+    // Setup animations if present in GLTF/GLB
+    if (result.animations && result.animations.length > 0) {
+      this.animationClips = result.animations;
+      this.animationMixer = new THREE.AnimationMixer(this.currentModel);
+      this.playAnimation(0);
+    } else {
+      this.animationClips = [];
+      this.animationMixer = null;
+      this.activeAction = null;
+      this.currentAnimationName = null;
+      this.isAnimationActive = false;
+    }
+
     // Attach dynamic dimensional bounding box (default: hidden)
     this.boundingBoxTool.attachToModel(this.currentModel, {
       visible: this.defaultShowBoundingBox,
@@ -219,6 +350,18 @@ export class Viewer extends EventEmitter {
   }
 
   public clearModel(): void {
+    if (this.animationMixer) {
+      this.animationMixer.stopAllAction();
+      if (this.currentModel) {
+        this.animationMixer.uncacheRoot(this.currentModel);
+      }
+      this.animationMixer = null;
+    }
+    this.animationClips = [];
+    this.activeAction = null;
+    this.currentAnimationName = null;
+    this.isAnimationActive = false;
+
     this.measurementTool.clearAll();
     this.clippingTool.resetAll();
     this.boundingBoxTool.detach();
@@ -538,11 +681,115 @@ export class Viewer extends EventEmitter {
   }
 
   // ==========================================
+  // Animation Controls (GLTF / GLB)
+  // ==========================================
+
+  /**
+   * Returns list of animation clip names available in the current model
+   */
+  public getAnimations(): string[] {
+    return this.animationClips.map((clip, index) => clip.name || `Animation ${index + 1}`);
+  }
+
+  /**
+   * Returns name of the currently active animation
+   */
+  public getCurrentAnimation(): string | null {
+    return this.currentAnimationName;
+  }
+
+  /**
+   * Play an animation by name or clip index
+   */
+  public playAnimation(nameOrIndex: string | number = 0): void {
+    if (!this.animationMixer || this.animationClips.length === 0) return;
+
+    let targetClip: THREE.AnimationClip | undefined;
+    if (typeof nameOrIndex === 'number') {
+      targetClip = this.animationClips[nameOrIndex];
+    } else {
+      targetClip = this.animationClips.find(
+        (c, idx) => c.name === nameOrIndex || `Animation ${idx + 1}` === nameOrIndex
+      );
+    }
+
+    if (!targetClip) {
+      targetClip = this.animationClips[0];
+    }
+
+    if (!targetClip) return;
+
+    const newAction = this.animationMixer.clipAction(targetClip);
+
+    if (this.activeAction && this.activeAction !== newAction) {
+      this.activeAction.fadeOut(0.3);
+      newAction.reset().fadeIn(0.3).play();
+    } else {
+      newAction.play();
+    }
+
+    this.activeAction = newAction;
+    this.currentAnimationName = targetClip.name || 'Animation 1';
+    this.isAnimationActive = true;
+    this.animationClock.getDelta(); // reset delta to prevent time jump
+
+    this.emit('animation:play', this.currentAnimationName);
+  }
+
+  /**
+   * Pause playback of the active animation
+   */
+  public pauseAnimation(): void {
+    this.isAnimationActive = false;
+    this.emit('animation:pause');
+  }
+
+  /**
+   * Resume playback of paused animation
+   */
+  public resumeAnimation(): void {
+    if (this.animationMixer && this.activeAction) {
+      this.isAnimationActive = true;
+      this.animationClock.getDelta();
+      this.emit('animation:play', this.currentAnimationName || '');
+    }
+  }
+
+  /**
+   * Stop active animation and reset to start frame
+   */
+  public stopAnimation(): void {
+    this.isAnimationActive = false;
+    if (this.activeAction) {
+      this.activeAction.stop();
+    }
+    this.emit('animation:stop');
+  }
+
+  /**
+   * Check whether animation is actively playing
+   */
+  public isAnimationPlaying(): boolean {
+    return this.isAnimationActive;
+  }
+
+  /**
+   * Set playback timeScale speed factor (e.g. 0.5, 1.0, 2.0)
+   */
+  public setAnimationSpeed(speed: number): void {
+    if (this.animationMixer) {
+      this.animationMixer.timeScale = Math.max(0, speed);
+      this.emit('animation:speed', speed);
+    }
+  }
+
+  // ==========================================
   // Cleanup
   // ==========================================
 
   public destroy(): void {
     this.clearModel();
+    this.modelLoader.destroy();
     this.measurementTool.destroy();
     this.clippingTool.destroy();
     this.sceneManager.destroy();

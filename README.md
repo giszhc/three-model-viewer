@@ -3,7 +3,7 @@
 > 🚀 现代化、高内聚的 Web 3D 模型检视与工程测量 SDK。基于 **Three.js** 与 **TypeScript** 构建，专为 Web 端三维轻量化展示、尺寸标注、空间测量与截面剖切量身定制。
 
 [![Live Demo](https://img.shields.io/badge/Demo-在线实时体验-0ea5e9?style=flat-square&logo=github)](https://giszhc.github.io/three-model-viewer/)
-[![npm version](https://img.shields.io/badge/npm-v1.0.1-blue.svg)](https://www.npmjs.com/package/@giszhc/three-model-viewer)
+[![npm version](https://img.shields.io/badge/npm-v1.1.0-blue.svg)](https://www.npmjs.com/package/@giszhc/three-model-viewer)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-3178c6.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -13,7 +13,8 @@
 
 ## 🌟 核心特性
 
-- 📦 **多源格式无缝加载**：支持 `OBJ`、`MTL`，以及包含模型和图片贴图的 `ZIP` 压缩包在浏览器**纯内存解压加载**，无需后端转码服务。
+- 📦 **全能 3D 格式无缝加载**：原生支持 `GLB`、`GLTF`（内置 **DRACO 网格压缩解压**、**KTX2 / Basis Universal 纹理压缩** 与 **Meshopt 压缩**，支持骨骼与关键帧动画）、`OBJ`、`MTL`，以及包含模型和图片贴图的 `ZIP` 压缩包在浏览器**纯内存解压加载**，无需后端转码服务。
+- 🎬 **骨骼与模型动画播放**：针对 GLTF / GLB 格式模型自动识别内置动画剪辑（Animation Clips），提供播放、暂停、多动作切换与 0.5x~2.0x 倍速控制。
 - 📏 **动态长宽高范围框**：实时绘制模型包围盒与三向尺寸引导线。**随着模型旋转，长宽高标签与指示线自动在当前的三个轴向空间自适应展示**。
 - 🎯 **严格模型表面约束与磁吸**：所有测量与自定义剖切交互**严格限制在模型表面**，模型外部点击自动拦截；内置 BVH 空间索引，鼠标靠近网格顶点时自动实现**毫秒级磁吸（Snapping）**；**表面标点与指示光标采用屏幕空间恒定像素渲染（Screen-Space Fixed Size），放大缩小模型时标点尺寸始终固定不畸变**。
 - 📐 **全功能工程级测量 (单次测量即退，严防误触)**：
@@ -141,9 +142,38 @@ fileInput.addEventListener('change', async (e) => {
 
 | 方法名 | 参数 | 描述 |
 | :--- | :--- | :--- |
-| `loadZip(source)` | `File \| Blob \| ArrayBuffer \| string` | 加载包含 `.obj`、`.mtl` 和贴图图片的 ZIP 压缩包 |
+| `loadGLB(source)` | `string \| ArrayBuffer \| Blob \| File` | 加载独立 `.glb` 二进制 3D 模型（支持骨骼动画与 DRACO 压缩） |
+| `loadGLTF(source)` | `string \| ArrayBuffer` | 加载 `.gltf` 场景定义 |
+| `loadZip(source)` | `File \| Blob \| ArrayBuffer \| string` | 加载包含 `.glb`、`.gltf` 或 `.obj`+`.mtl`+贴图的 ZIP 压缩包 |
 | `loadOBJ(objUrl, mtlUrl?)` | `string, string?` | 通过 URL 直接加载 OBJ 及可选的 MTL 材质文件 |
-| `clearModel()` | - | 清除当前加载的模型并释放内存资源 |
+| `loadFiles(files)` | `FileList \| File[]` | 智能识别并加载所选文件列表（支持 GLB/GLTF/ZIP/OBJ 多文件关联） |
+| `loadFromUrl(url)` | `string` | 自动根据在线直链后缀识别并加载模型 |
+| `clearModel()` | - | 清除当前加载的模型、停止动画并释放内存资源 |
+
+### 2. 动画控制系统 (`Animations`)
+
+针对包含内置动画剪辑（Animation Clips）的 GLTF/GLB 模型：
+
+```typescript
+// 1. 获取当前模型包含的所有动作剪辑名称列表
+const clips = viewer.getAnimations(); // ['Idle', 'Walk', 'Run']
+
+// 2. 播放指定动作 (支持动作名称或数字索引)
+viewer.playAnimation('Run'); 
+// 或 viewer.playAnimation(0);
+
+// 3. 暂停、继续与停止动画
+viewer.pauseAnimation();  // 暂停当前动作
+viewer.resumeAnimation(); // 从暂停位置继续播放
+viewer.stopAnimation();   // 停止并回到起始帧
+
+// 4. 获取当前播放动作与状态
+const currentClip = viewer.getCurrentAnimation();
+const isPlaying = viewer.isAnimationPlaying();
+
+// 5. 调节播放速度 (0.5x, 1.0x, 2.0x 等)
+viewer.setAnimationSpeed(1.5);
+```
 
 ### 2. 测量系统 (`Measurement`)
 

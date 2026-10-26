@@ -683,6 +683,65 @@
       pointer-events: none;
     }
 
+    /* Animation Control Floating Bar */
+    .anim-badge {
+      position: absolute;
+      bottom: 84px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 25;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 14px;
+      border-radius: 30px;
+      background: var(--panel-bg);
+      backdrop-filter: var(--liquid-blur);
+      -webkit-backdrop-filter: var(--liquid-blur);
+      border: 1px solid var(--panel-border);
+      box-shadow: var(--panel-shadow);
+      font-size: 12px;
+      color: var(--text-main);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .anim-badge.hidden {
+      opacity: 0;
+      visibility: hidden;
+      transform: translate(-50%, 14px);
+      pointer-events: none;
+    }
+    .anim-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .anim-btn:hover {
+      background: #38bdf8;
+      color: #fff;
+    }
+    .anim-select, .anim-speed-select {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--panel-border);
+      color: var(--text-main);
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 11px;
+      outline: none;
+      cursor: pointer;
+    }
+    [data-theme="light"] .anim-select, [data-theme="light"] .anim-speed-select {
+      background: rgba(255, 255, 255, 0.85);
+      color: #1e293b;
+    }
+
     #export-menu-wrapper.hidden {
       display: none !important;
     }
@@ -1116,27 +1175,27 @@
           </svg>
           <span>打开模型</span>
         </label>
-        <input type="file" id="file-input" accept=".zip,.obj,.mtl" multiple style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; overflow: hidden;" />
+        <input type="file" id="file-input" accept=".zip,.glb,.gltf,.bin,.obj,.mtl,image/*" multiple style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; overflow: hidden;" />
 
         <!-- Load from Online URL Button & Popover -->
         <div style="position: relative;" id="top-url-wrapper">
-          <button type="button" class="btn" id="btn-top-url-toggle" title="输入在线模型地址 (.zip 或 .obj)">
+          <button type="button" class="btn" id="btn-top-url-toggle" title="输入在线模型地址 (.glb / .gltf / .zip / .obj)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
             </svg>
             <span>输入地址</span>
           </button>
-          <div class="popover-menu popover-menu-top" id="popover-url" style="width: 320px;">
+          <div class="popover-menu popover-menu-top" id="popover-url" style="width: 330px;">
             <div class="popover-title">
-              <span>在线模型直链 (.zip / .obj)</span>
+              <span>在线模型直链 (.glb / .gltf / .zip / .obj)</span>
             </div>
             <div style="display: flex; gap: 8px; margin-top: 6px;">
               <input 
                 type="url" 
                 id="input-top-url" 
                 class="glass-url-input" 
-                placeholder="https://.../model.zip 或 .obj" 
+                placeholder="https://.../model.glb 或 .gltf / .zip / .obj" 
                 autocomplete="off"
                 spellcheck="false"
                 style="padding-left: 14px;"
@@ -1191,18 +1250,44 @@
       </div>
     </header>
 
-    <!-- Bottom Left HUD (Triangle & Vertex & Dimensions) -->
+    <!-- Bottom Left HUD (Triangle & Vertex & Dimensions & Format) -->
     <div class="hud-badge hidden" id="hud-badge">
+      <span class="badge-format" id="stat-format" style="background: rgba(56, 189, 248, 0.18); color: #38bdf8; font-weight: 700; padding: 2px 7px; border-radius: 6px; font-size: 10px; border: 1px solid rgba(56, 189, 248, 0.35); text-transform: uppercase;">3D</span>
       <div class="hud-stat">顶点: <strong id="stat-verts">-</strong></div>
       <div class="hud-stat">三角面: <strong id="stat-faces">-</strong></div>
       <div class="hud-stat">尺寸: <strong id="stat-dims">-</strong></div>
+    </div>
+
+    <!-- Floating Animation Control Widget (Displayed dynamically when model has animations) -->
+    <div class="anim-badge hidden" id="anim-badge">
+      <button type="button" class="anim-btn" id="btn-anim-playpause" title="播放 / 暂停动画">
+        <svg id="anim-icon-play" width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        <svg id="anim-icon-pause" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+          <rect x="6" y="4" width="4" height="16"></rect>
+          <rect x="14" y="4" width="4" height="16"></rect>
+        </svg>
+      </button>
+      <div class="anim-info" style="display: flex; align-items: center; gap: 6px;">
+        <span style="font-size: 11px; opacity: 0.85; font-weight: 500;">动作:</span>
+        <select id="anim-select" class="anim-select"></select>
+      </div>
+      <div class="anim-speed-wrapper" style="display: flex; align-items: center; gap: 4px;">
+        <select id="anim-speed-select" class="anim-speed-select" title="播放速率">
+          <option value="0.5">0.5×</option>
+          <option value="1" selected>1.0×</option>
+          <option value="1.5">1.5×</option>
+          <option value="2">2.0×</option>
+        </select>
+      </div>
     </div>
 
     <!-- Instruction Tip Toast -->
     <div id="tool-tip"></div>
 
     <!-- Drag & drop overlay -->
-    <div id="drop-overlay">拖放 .zip 或 .obj 格式三维模型到此处加载</div>
+    <div id="drop-overlay">拖放 .glb / .gltf / .obj / .zip 格式三维模型到此处加载</div>
 
     <!-- Central Drag-Drop Upload Area (shown initially when empty) -->
     <div id="upload-zone" class="upload-zone">
@@ -1215,10 +1300,11 @@
           </svg>
         </div>
         <div class="upload-title">点击或拖拽三维模型至此处</div>
-        <div class="upload-desc">支持包含材质贴图的 ZIP 压缩包，或者单个 OBJ 模型文件</div>
+        <div class="upload-desc">支持 GLB / GLTF (含动画与DRACO压缩)、OBJ (含MTL材质与贴图) 及 ZIP 压缩包</div>
         <div class="upload-formats">
+          <span class="fmt-pill">🚀 .GLB / .GLTF (动画/压缩)</span>
           <span class="fmt-pill">📦 .ZIP (含材质贴图)</span>
-          <span class="fmt-pill">📐 .OBJ 网格</span>
+          <span class="fmt-pill">📐 .OBJ 模型网格</span>
         </div>
         <div style="display: flex; gap: 10px; margin-top: 6px; flex-wrap: wrap; justify-content: center;">
           <label for="zone-file-input" class="btn primary" id="btn-browse-zone" style="padding: 10px 24px; font-size: 13px; border-radius: 12px; cursor: pointer;">
@@ -1241,7 +1327,7 @@
                 type="url" 
                 id="input-zone-url" 
                 class="glass-url-input" 
-                placeholder="输入 .zip 或 .obj 在线直链 (支持 https://...)" 
+                placeholder="输入 .glb / .gltf / .zip / .obj 在线直链 (支持 https://...)" 
                 autocomplete="off"
                 spellcheck="false"
               />
@@ -1251,7 +1337,7 @@
             </button>
           </div>
         </div>
-        <input type="file" id="zone-file-input" accept=".zip,.obj,.mtl" multiple style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; overflow: hidden;" />
+        <input type="file" id="zone-file-input" accept=".zip,.glb,.gltf,.bin,.obj,.mtl,image/*" multiple style="position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; overflow: hidden;" />
       </div>
     </div>
 
