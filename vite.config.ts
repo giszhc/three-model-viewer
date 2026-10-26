@@ -18,6 +18,9 @@ export default defineConfig(({ mode }) => {
   // 2. CDN standalone bundle build (Self-contained UMD package for unpkg / jsDelivr / browser script tag)
   if (mode === 'cdn') {
     return {
+      define: {
+        'import.meta': '{}',
+      },
       build: {
         outDir: 'dist',
         emptyOutDir: false, // Preserve ESM, CJS and .d.ts in dist
