@@ -16,3 +16,7 @@ Thumbs.db
 CSDN_ARTICLE.md
 *CSDN*
 
+# 打包归档文件
+*.tgz
+
+
